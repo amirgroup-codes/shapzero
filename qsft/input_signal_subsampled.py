@@ -142,10 +142,28 @@ class SubsampledSignal(Signal):
         pbar = tqdm(total=0, position=0)
         for i in range(len(self.Ms)):
             for j in range(len(self.Ds[i])):
-                transform_file = Path(f"{self.foldername}/transforms/U{i}_{j}.pickle")
+                try:
+                    if self.type != 'None' and self.type:
+                        path_parts = self.type.split('/')
+                        transform_file = Path(self.foldername) / "transforms" / Path(*path_parts) / f"U{i}_D{j}.pickle"
+                    else:
+                        transform_file = Path(self.foldername) / "transforms" / f"U{i}_D{j}.pickle"
+                    
+                    transform_file.parent.mkdir(parents=True, exist_ok=True)
+                except AttributeError:
+                    transform_file = Path(f"{self.foldername}/transforms/U{i}_{j}.pickle")
                 if self.foldername and transform_file.is_file():
                     self.Us[i][j], self.transformTimes[i][j] = load_data(transform_file)
-                    sample_file = Path(f"{self.foldername}/samples/M{i}_D{j}.pickle")
+                    try:
+                        if self.type != 'None' and self.type:
+                            path_parts = self.type.split('/')
+                            sample_file = Path(self.foldername) / "samples" / Path(*path_parts) / f"M{i}_D{j}.pickle"
+                        else:
+                            sample_file = Path(self.foldername) / "samples" / f"M{i}_D{j}.pickle"
+                        
+                        sample_file.parent.mkdir(parents=True, exist_ok=True)
+                    except AttributeError:
+                        sample_file = Path(f"{self.foldername}/samples/M{i}_D{j}.pickle")
                     samples = load_data(sample_file)
                     pbar.total = len(self.Ms) * len(self.Ds[0]) * len(self.Us[i][j])
                     pbar.update(len(self.Us[i][j]))
@@ -161,7 +179,6 @@ class SubsampledSignal(Signal):
                     except AttributeError:
                         sample_file = Path(f"{self.foldername}/samples/M{i}_D{j}.pickle")
                         
-
                     if self.foldername and sample_file.is_file():
                         samples = load_data(sample_file)
                         pbar.total = len(self.Ms) * len(self.Ds[0]) * len(samples)
@@ -183,29 +200,7 @@ class SubsampledSignal(Signal):
                                 pbar.update()
                         if self.foldername:
                             save_data(samples, sample_file)
-                        newrun = True 
 
-        # # Remove empirical mean from samples
-        # accumulated_samples = [] 
-        # for i in range(len(self.Ms)):
-        # # for i in range(2,3):
-        #     for j in range(len(self.Ds[i])):
-        #         try:
-        #             if self.type != 'None':
-        #                 sample_file = Path(f"{self.foldername}/samples/{self.type}/M{i}_D{j}.pickle")
-        #             else: 
-        #                 sample_file = Path(f"{self.foldername}/samples/M{i}_D{j}.pickle")
-        #         except AttributeError:
-        #             sample_file = Path(f"{self.foldername}/samples/M{i}_D{j}.pickle")
-        #         # sample_file = Path(f"{self.foldername}/samples/M{i}_D{j}.pickle")
-        #         transform_file = Path(f"{self.foldername}/transforms/U{i}_{j}.pickle")
-        #         samples = np.abs(load_data(sample_file))
-        #         accumulated_samples = np.concatenate([accumulated_samples, samples.flatten()])
-
-        # global mean_value
-        # If transform exists (q-sft has already ran), then subtraction won't happen.
-        # if newrun == False:
-            # mean_value = 0
         for i in range(len(self.Ms)):
             for j in range(len(self.Ds[i])):
                 try:
@@ -215,8 +210,16 @@ class SubsampledSignal(Signal):
                         sample_file = Path(f"{self.foldername}/samples/M{i}_D{j}.pickle")
                 except AttributeError:
                     sample_file = Path(f"{self.foldername}/samples/M{i}_D{j}.pickle")
-                # sample_file = Path(f"{self.foldername}/samples/M{i}_D{j}.pickle")
-                transform_file = Path(f"{self.foldername}/transforms/U{i}_{j}.pickle")
+                try:
+                    if self.type != 'None' and self.type:
+                        path_parts = self.type.split('/')
+                        transform_file = Path(self.foldername) / "transforms" / Path(*path_parts) / f"U{i}_D{j}.pickle"
+                    else:
+                        transform_file = Path(self.foldername) / "transforms" / f"U{i}_D{j}.pickle"
+                    
+                    transform_file.parent.mkdir(parents=True, exist_ok=True)
+                except AttributeError:
+                    transform_file = Path(f"{self.foldername}/transforms/U{i}_{j}.pickle")
                 samples = load_data(sample_file)
                 for b in self.all_bs:
                     start_time = time.time()
@@ -224,31 +227,6 @@ class SubsampledSignal(Signal):
                     self.transformTimes[i][j][b] = time.time() - start_time
                 if self.foldername:
                     save_data((self.Us[i][j], self.transformTimes[i][j]), transform_file)
-        # else:
-        #     mean_value = np.mean(accumulated_samples)
-        #     # np.save('/usr/scratch/dtsui/BioMobius/RNA/results/q4_n30_b6/train/samples/train_mean.npy', mean_value)
-        #     # np.savetxt(f"{self.foldername}/mean_value.txt", [mean_value])
-
-        #     for i in range(len(self.Ms)):
-        #     # for i in range(2,3):
-        #         for j in range(len(self.Ds[i])):
-        #             if self.type != 'None':
-        #                 sample_file = Path(f"{self.foldername}/samples/{self.type}/M{i}_D{j}.pickle")
-        #             else:
-        #                 sample_file = Path(f"{self.foldername}/samples/M{i}_D{j}.pickle")
-        #             # sample_file = Path(f"{self.foldername}/samples/M{i}_D{j}.pickle")
-        #             transform_file = Path(f"{self.foldername}/transforms/U{i}_{j}.pickle")
-        #             samples = load_data(sample_file)
-        #             samples = samples - mean_value
-        #             save_data(samples, sample_file)
-
-        #             for b in self.all_bs:
-        #                 start_time = time.time()
-        #                 self.Us[i][j][b] = self._compute_subtransform(samples, b)
-        #                 self.transformTimes[i][j][b] = time.time() - start_time
-        #             # Move the creation of transform to down here
-        #             if self.foldername:
-        #                 save_data((self.Us[i][j], self.transformTimes[i][j]), transform_file)
 
     def _generate_train_subsample(self):
         """

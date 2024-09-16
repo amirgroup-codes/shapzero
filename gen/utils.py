@@ -41,7 +41,7 @@ def calculate_fourier_magnitudes(locations, gwht):
     F_k_values = np.square(F_k_values)
     return dict(zip(k_values, F_k_values))
 
-def plot_interaction_magnitudes(sum_squares, q, n, b, output_folder):
+def plot_interaction_magnitudes(sum_squares, q, n, b, output_folder, args):
     index_counts = list(sum_squares.keys())
     values = list(sum_squares.values())
     plt.figure()
@@ -52,7 +52,13 @@ def plot_interaction_magnitudes(sum_squares, q, n, b, output_folder):
     plt.gca().spines['top'].set_visible(False)
     plt.gca().spines['right'].set_visible(False)
     plt.title('q{}_n{}_b{}'.format(q, n, b))
-    plt.savefig(output_folder / 'magnitude_of_interactions.png')
+
+    if args.param:
+        param_path = args.param.replace('/', '_')
+        file_path = 'magnitude_of_interactions_{}.png'.format(param_path)
+    else:
+        file_path = 'magnitude_of_interactions.png'
+    plt.savefig(output_folder / file_path)
     plt.close()
 
 def write_results_to_file(results_file, q, n, b, noise_sd, n_used, r2_value, nmse, avg_hamming_weight, max_hamming_weight):
@@ -69,12 +75,13 @@ def write_results_to_file(results_file, q, n, b, noise_sd, n_used, r2_value, nms
         
 
 def summarize_results(locations, gwht, q, n, b, noise_sd, n_used, r2_value, nmse, avg_hamming_weight, max_hamming_weight, folder, args):
+
     sum_squares = calculate_fourier_magnitudes(locations, gwht)
-    plot_interaction_magnitudes(sum_squares, q, n, b, folder)
+    plot_interaction_magnitudes(sum_squares, q, n, b, folder, args)
 
     if args.param:
         param_path = args.param.replace('/', '_')
-        file_path = 'helper_results{}.txt'.format(param_path)
+        file_path = 'helper_results_{}.txt'.format(param_path)
     else:
         file_path = 'helper_results.txt'
 
