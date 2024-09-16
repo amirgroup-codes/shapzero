@@ -1,18 +1,21 @@
-# Python packages
+"""
+Script to generate q-ary indices for a given q, n, b, num_subsample, and num_repeat 
+Not model specific
+"""
 import numpy as np
 import sys
 from pathlib import Path
 sys.path.append("..")
 from src.helper import Helper
-import time
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
-
 import argparse
 
+
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run q-sft.")
+    parser = argparse.ArgumentParser(description="Get q-ary indices.")
     parser.add_argument("--q", required=True)
     parser.add_argument("--n", required=True)
     parser.add_argument("--b", required=True)
@@ -28,8 +31,6 @@ def str_to_bool(s):
     
 if __name__ == "__main__":
     np.random.seed(20)
-    start_time = time.time()
-
     args = parse_args()
 
 

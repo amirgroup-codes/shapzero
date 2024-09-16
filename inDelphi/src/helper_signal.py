@@ -8,7 +8,4 @@ class BioSubsampledSignal(SubsampledSignal):
         super().__init__(**kwargs)
 
     def subsample(self, query_indices):
-        """
-        Computes the signal/function values at the queried indicies on the fly
-        """
         raise ValueError('Samples not loaded. Check that M{i}_D{j}.pickle exists.')
