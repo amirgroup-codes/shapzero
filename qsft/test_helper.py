@@ -1,5 +1,4 @@
 import numpy as np
-from qsft.lasso import lasso_decode
 from qsft.qsft import QSFT
 from qsft.utils import gwht, dec_to_qary_vec, NpEncoder
 import json

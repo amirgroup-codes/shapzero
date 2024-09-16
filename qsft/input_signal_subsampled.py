@@ -80,6 +80,7 @@ class SubsampledSignal(Signal):
             self._set_Ms_and_Ds_qsft()
             self._generate_train_subsample()
             self._generate_test_subsample()
+            exit()
         elif self.subsampling_method == "uniform":
             self._subsample_uniform()
         elif self.subsampling_method == "qsft":
