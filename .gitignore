@@ -1,2 +1,6 @@
+gen/__pycache__/
 qsft/__pycache__
 inDelphi/src/__pycache__
+TIGER/src/__pycache__/
+TIGER/tiger/__pycache__
+TIGER/tiger/hugging_face/__pycache__
