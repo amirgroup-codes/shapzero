@@ -3,6 +3,7 @@ gen/__pycache__/
 qsft/__pycache__
 
 # inDelphi
+inDelphi/inDelphi-model/__pycache__
 inDelphi/src/__pycache__
 inDelphi/results/q4_n40_b7/qsft_transform*.pickle
 inDelphi/results/q4_n40_b7/helper_results*.txt
