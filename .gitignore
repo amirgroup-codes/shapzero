@@ -1,6 +1,18 @@
+# General
 gen/__pycache__/
 qsft/__pycache__
+
+# inDelphi
 inDelphi/src/__pycache__
+inDelphi/results/q4_n40_b7/qsft_transform*.pickle
+inDelphi/results/q4_n40_b7/helper_results*.txt
+inDelphi/results/q4_n40_b7/magnitude_of_interactions*.png
+inDelphi/results/q4_n40_b7/test_samples*.png
+!inDelphi/results/q4_n40_b7/qsft_transform_HEK293_frameshift.pickle
+!inDelphi/results/q4_n40_b7/helper_results_HEK293_frameshift.txt
+!inDelphi/results/q4_n40_b7/magnitude_of_interactions_HEK293_frameshift.png
+!inDelphi/results/q4_n40_b7/test_samples_HEK293_frameshift.png
+
 TIGER/src/__pycache__/
 TIGER/tiger/__pycache__
 TIGER/tiger/hugging_face/__pycache__
