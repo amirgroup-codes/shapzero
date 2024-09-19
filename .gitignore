@@ -30,3 +30,10 @@ inDelphi/results/q4_n40_b7/test/HEK293/*
 TIGER/src/__pycache__/
 TIGER/tiger/__pycache__
 TIGER/tiger/hugging_face/__pycache__
+TIGER/results/q4_n27_b7/train/samples/titration/*
+TIGER/results/q4_n27_b7/train/samples_mean/titration/*
+TIGER/results/q4_n27_b7/train/transforms/titration/*
+TIGER/results/q4_n27_b7/qsft_transform_titration.pickle
+TIGER/results/q4_n27_b7/helper_results_titration.txt
+TIGER/results/q4_n27_b7/magnitude_of_interactions*.png
+TIGER/results/q4_n27_b7/test_samples*.png
