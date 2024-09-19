@@ -12,7 +12,7 @@ from src.utils import split_sequence, get_indelphi_from_str
 
 n = 40
 celltype = 'HEK293'
-properties = ['Frameshift frequency', 'Precision', 'Insertion %', 'Expected indel length', 'MH del frequency', "Highest 1-bp insertion"]
+properties = ['Frameshift frequency', 'Precision', 'Insertion %', 'Expected indel length', 'MH del frequency', 'Highest 1-bp insertion']
 file_path = ['frameshift', 'precision', 'insertion', 'indel_length', 'MH_del_freq', '1_bp_ins']
 df_names = pd.read_csv('data/names-libA.txt', header=None, names=['_Experiment'])
 df_sequences = pd.read_csv('data/targets-libA.txt', header=None, names=['Sequence'])
@@ -23,6 +23,6 @@ right_seq = df_train['Right_seq']
 seqs = left_seq + right_seq
 seqs = seqs.tolist()
 all_samples = get_indelphi_from_str(celltype, seqs, properties)
-for i, file_name in enumerate(file_path):
-    df_train[file_name] = all_samples[:, i]
+for i, property in enumerate(properties):
+    df_train[property] = all_samples[:, i]
 df_train.to_csv('data/{}_train.csv'.format(celltype))

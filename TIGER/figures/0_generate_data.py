@@ -19,7 +19,7 @@ NORMALIZATION_KWARGS = dict(q_neg=1, q_pos=99, squash=False)
 
 """
 Create perfect match heldout dataset from the main text, and 1 basepair off dataset from the supplementary text.
-Create a CSV with the experimental scores, the full sequence, and the n=40 sequence.
+Create a CSV with the experimental scores, the full sequence, and the n=26 sequence.
 """
 curr_dir = os.getcwd()
 data = load_data(curr_dir + '/../tiger/data-processed/off-target')

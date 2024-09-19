@@ -13,6 +13,11 @@ inDelphi/results/q4_n40_b7/train/samples/HEK293/*
 inDelphi/results/q4_n40_b7/train/samples_mean/HEK293/*
 inDelphi/results/q4_n40_b7/train/transforms/HEK293/*
 inDelphi/results/q4_n40_b7/test/HEK293/*
+inDelphi/figures/shap_results/shapzero_fsi_HEK293_1_bp_ins.npz
+inDelphi/figures/shap_results/shapzero_values_HEK293_1_bp_ins.npy
+inDelphi/figures/shap_results/time_shapzero_values_HEK293_1_bp_ins.npy
+inDelphi/figures/shap_results/time_shapzero_fsi_HEK293_1_bp_ins.npy
+
 !inDelphi/results/q4_n40_b7/qsft_transform_HEK293_frameshift.pickle
 !inDelphi/results/q4_n40_b7/helper_results_HEK293_frameshift.txt
 !inDelphi/results/q4_n40_b7/magnitude_of_interactions_HEK293_frameshift.png
@@ -37,3 +42,5 @@ TIGER/results/q4_n26_b7/qsft_transform_titration.pickle
 TIGER/results/q4_n26_b7/helper_results_titration.txt
 TIGER/results/q4_n26_b7/magnitude_of_interactions*.png
 TIGER/results/q4_n26_b7/test_samples*.png
+!TIGER/results/q4_n26_b7/magnitude_of_interactions_on_target.png
+!TIGER/results/q4_n26_b7/test_samples_on_target.png

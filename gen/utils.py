@@ -275,3 +275,22 @@ def plot_time_complexity(ax, overall_shap_time, overall_mobius_time, font_size=5
         legend.get_frame().set_linewidth(0.5)
     if tot_samples is not None:
         ax.plot(tot_samples, overall_shap_time[tot_samples], marker='x', color='black', markersize=markersize, zorder=10)
+
+
+def compute_fourier_output(seqs_qary, qsft_transform, q):
+    """
+    Given a list of q-ary encoded sequence and the qsft transform, compute the predicted Fourier output.
+    """
+    batch_size = 10000
+    beta_keys = list(qsft_transform.keys())
+    beta_values = list(qsft_transform.values())
+    y_hat = []
+    for i in range(0, len(seqs_qary), batch_size):
+        seqs_qary_batch = seqs_qary[i:i + batch_size, :]
+        freqs = np.array(seqs_qary_batch) @ np.array(beta_keys).T
+        H = np.exp(2j * np.pi * freqs / q)
+        y_hat.append(H @ np.array(beta_values))
+
+    y_hat = np.concatenate(y_hat)
+
+    return y_hat
