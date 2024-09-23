@@ -31,6 +31,8 @@ seqs = seqs.tolist()
 
 # SHAP Zero
 df = pd.DataFrame()
+index_names = ['Pearson', 'Spearman']
+df_corrs = pd.DataFrame(index=index_names)
 print('SHAP Zero')
 for f, property in zip(file_path, properties):
     
@@ -54,8 +56,9 @@ for f, property in zip(file_path, properties):
     y_pred = np.real(compute_fourier_output(seqs_qary, qsft_transform, q))
     pearson_corr, _ = pearsonr(df_heldout[property], y_pred)
     spearman_corr, _ = spearmanr(df_heldout[property], y_pred)
-    print('{} Pearson correlation: {:.2f}, Spearman correlation: {:.2f}'.format(property, pearson_corr, spearman_corr))
+    print('{} - Pearson correlation: {:.2f}, Spearman correlation: {:.2f}'.format(property, pearson_corr, spearman_corr))
     df['SHAP Zero: {}'.format(property)] = y_pred
+    df_corrs['SHAP Zero: {}'.format(property)] = [pearson_corr, spearman_corr]
 
 
 
@@ -73,6 +76,7 @@ for property in properties:
     y_pred_linear = y_pred.copy()
     print('Linear model {}: Pearson correlation: {:.2f}, Spearman correlation: {:.2f}'.format(property, pearson_corr, spearman_corr))
     df['Linear: {}'.format(property)] = y_pred
+    df_corrs['Linear: {}'.format(property)] = [pearson_corr, spearman_corr]
 
     # Pairwise model
     corr, y_pred = run_pairwise_model(sequences_train, df_train[property].tolist(), sequences_test, df_heldout[property].tolist())
@@ -81,5 +85,7 @@ for property in properties:
     y_pred_pairwise = y_pred.copy()
     print('Pairwise model {}: Pearson correlation: {:.2f}, Spearman correlation: {:.2f}'.format(property, pearson_corr, spearman_corr))
     df['Pairwise: {}'.format(property)] = y_pred
+    df_corrs['Pairwise: {}'.format(property)] = [pearson_corr, spearman_corr]
 
 df.to_csv('correlation_results/model_scores_{}.csv'.format(celltype))
+df_corrs.to_csv('correlation_results/model_results_{}.csv'.format(celltype))

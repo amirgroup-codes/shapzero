@@ -49,7 +49,57 @@ def get_predictions_shap(X, celltype='HEK293'):
     return all_samples
 
 
-def get_predictions_shap_interactions(X, celltype='HEK293', property='Frameshift frequency'): 
+def get_predictions_fsi_HEK293_frameshift(X, celltype='HEK293', property='Frameshift frequency'): 
+    """
+    Takes in a matrix X (# samples x # features) and runs inDelphi. Output is a list of # samples with respect to one property
+    """
+    inDelphi.init_model(celltype = celltype)
+    ind = range(X.shape[0])
+    all_samples = np.zeros(np.shape(X)[0])
+
+    indices_nucleotides = [[encoding[num] for num in row] for row in X]
+    indices_nucleotides = [list(map(str, row)) for row in indices_nucleotides]
+    left_seqs = [''.join(nucleotide_padding[:cut]) + ''.join(row[:n_2]) for row in indices_nucleotides]
+    right_seqs = [''.join(row[n_2:]) + ''.join(nucleotide_padding[cut:]) for row in indices_nucleotides]
+
+    with tqdm(total=len(left_seqs), desc="Computing samples") as pbar:
+        for (i, left_seq, right_seq) in zip(ind, left_seqs, right_seqs):
+            seq = left_seq + right_seq
+            cutsite = len(left_seq)
+            pred_df, stats = inDelphi.predict(seq, cutsite)
+            stats['Insertion %'] = pred_df.loc[pred_df['Category'] == 'ins', 'Predicted frequency'].sum()
+            stats["Highest 1-bp insertion"] = pred_df[(pred_df['Category'] == 'ins') & (pred_df['Length'] == 1)]['Predicted frequency'].max()
+            all_samples[i] = stats[property]
+            pbar.update()
+    return all_samples
+
+
+def get_predictions_fsi_HEK293_1bpins(X, celltype='HEK293', property='Highest 1-bp insertion'): 
+    """
+    Takes in a matrix X (# samples x # features) and runs inDelphi. Output is a list of # samples with respect to one property
+    """
+    inDelphi.init_model(celltype = celltype)
+    ind = range(X.shape[0])
+    all_samples = np.zeros(np.shape(X)[0])
+
+    indices_nucleotides = [[encoding[num] for num in row] for row in X]
+    indices_nucleotides = [list(map(str, row)) for row in indices_nucleotides]
+    left_seqs = [''.join(nucleotide_padding[:cut]) + ''.join(row[:n_2]) for row in indices_nucleotides]
+    right_seqs = [''.join(row[n_2:]) + ''.join(nucleotide_padding[cut:]) for row in indices_nucleotides]
+
+    with tqdm(total=len(left_seqs), desc="Computing samples") as pbar:
+        for (i, left_seq, right_seq) in zip(ind, left_seqs, right_seqs):
+            seq = left_seq + right_seq
+            cutsite = len(left_seq)
+            pred_df, stats = inDelphi.predict(seq, cutsite)
+            stats['Insertion %'] = pred_df.loc[pred_df['Category'] == 'ins', 'Predicted frequency'].sum()
+            stats["Highest 1-bp insertion"] = pred_df[(pred_df['Category'] == 'ins') & (pred_df['Length'] == 1)]['Predicted frequency'].max()
+            all_samples[i] = stats[property]
+            pbar.update()
+    return all_samples
+
+
+def get_predictions_fsi_U2OS_1bpins(X, celltype='U2OS', property='Highest 1-bp insertion'): 
     """
     Takes in a matrix X (# samples x # features) and runs inDelphi. Output is a list of # samples with respect to one property
     """

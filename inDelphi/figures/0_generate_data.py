@@ -55,3 +55,12 @@ df.to_csv('data/HEK293_heldout.csv')
 
 
 
+"""
+SUPPLEMENTARY DATA: Highest 1-bp insertion % for U2OS cells
+"""
+
+
+
+
+
+

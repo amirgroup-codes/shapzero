@@ -1,5 +1,7 @@
 """
 Script to compute SHAP values and Faith-Shap interactions 
+Output is shapzero_values.npy, which contains a num_samples x n matrix of SHAP values
+Output is shapzero_fsi.npz, which contains a num_samples x n matrix of q-ary encoded sequences under 'sequences' and a list of dictionaries under 'interactions_sequences' containing the interactions at each position for each sequence
 """
 import numpy as np
 import pandas as pd

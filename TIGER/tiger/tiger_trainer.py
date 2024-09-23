@@ -50,10 +50,13 @@ def test_calibration(df: pd.DataFrame, params: pd.DataFrame, title: str = ''):
 
 
 def score_tiger(df: pd.DataFrame, sat_quant_active: float, sat_quant_inactive: float):
+    # Modified score_tiger to also take SM cases for purposes of correlation in the supplementary material 
     assert 0 < sat_quant_active < sat_quant_inactive < 1
 
     # map upper and lower predicted LFC quantiles to their respective locations on a sigmoid
     lfc = df.loc[df['guide_type'] == 'PM', 'predicted_lfc']
+    if lfc.empty:
+        lfc = df.loc[df['guide_type'] == 'SM', 'predicted_lfc']
     x = np.array([[lfc.quantile(sat_quant_active), 1], [lfc.quantile(sat_quant_inactive), 1]])
     y = np.log(np.array([[sat_quant_active], [sat_quant_inactive]]) ** -1 - 1)
     a, b = np.squeeze(np.linalg.inv(x.T @ x) @ x.T @ y)
@@ -87,7 +90,6 @@ def return_scoring(df: pd.DataFrame, params: pd.DataFrame):
     """
     Modified function of test_scoring for returning values
     """
-
     # performance before/after transform
     print('\n*** Transformation Effect ***')
     print('Before:')

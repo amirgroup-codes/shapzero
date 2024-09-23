@@ -33,6 +33,7 @@ start_time = time.time()
 all_samples = get_indelphi_from_str(celltype, seqs, properties)
 print('inDelphi')
 df = pd.read_csv('correlation_results/model_scores_{}.csv'.format(celltype))
+df_corrs = pd.read_csv('correlation_results/model_results_{}.csv'.format(celltype))
 
 # Save each property's results
 end_time = time.time()
@@ -42,9 +43,11 @@ for i, property in enumerate(properties):
     y_pred = all_samples[:, i]
     pearson_corr, _ = pearsonr(df_heldout[property], y_pred)
     spearman_corr, _ = spearmanr(df_heldout[property], y_pred)
-    print('{} Pearson correlation: {:.2f}, Spearman correlation: {:.2f}'.format(property, pearson_corr, spearman_corr))
+    print('{} - Pearson correlation: {:.2f}, Spearman correlation: {:.2f}'.format(property, pearson_corr, spearman_corr))
     df['Model: {}'.format(property)] = y_pred
+    df_corrs['Model: {}'.format(property)] = [pearson_corr, spearman_corr]
 
 df = df.drop(columns=['Unnamed: 0'])
 df.to_csv('correlation_results/model_scores_{}.csv'.format(celltype))
+df_corrs.to_csv('correlation_results/model_results_{}.csv'.format(celltype))
 
