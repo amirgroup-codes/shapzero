@@ -66,7 +66,7 @@ for property in file_path:
         Interactions
         """
         start_time_i = time.time()
-        interactions = shap_zero.explain(sequence, explanation='faith_shap') # Returns a dictionary containing the SHAP interactions for each position
+        interactions = shap_zero.explain(sequence, explanation='faith_shap') # Returns a dictionary containing interactions for each position
         end_time_i = time.time()
         elapsed_time_i = end_time_i - start_time_i
         time_interaction += elapsed_time_i

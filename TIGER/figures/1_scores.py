@@ -1,5 +1,5 @@
 """
-Script to compute scores for SHAP Zero, linear model, and pairwise model
+Script to compute scores for SHAP Zero, TIGER, linear model, and pairwise model
 """
 import numpy as np
 import sys

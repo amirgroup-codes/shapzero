@@ -231,7 +231,7 @@ def summary_stats(y, y_hat):
     }, index=[0])
 
 
-def plot_time_complexity(ax, overall_shap_time, overall_mobius_time, font_size=5, x_label='Number of samples', y_label='Total runtime (seconds)', first_shap_method='Kernel SHAP', first_shap_color='#00a087', second_shap_method='F-SHAP', second_shap_color='#3c5488', y_limits=None, legend=True, legend_marker_size=3, linewidth=0.2, tot_samples=None, markersize=0.25, legend_loc='upper right', offset_intersection_text=100):
+def plot_time_complexity(ax, overall_shap_time, overall_mobius_time, font_size=5, x_label='Number of samples', y_label='Total runtime (seconds)', first_shap_method='Kernel SHAP', first_shap_color='#00a087', second_shap_method='SHAP Zero', second_shap_color='#3c5488', y_limits=None, legend=True, legend_marker_size=3, linewidth=0.2, tot_samples=None, markersize=0.25, legend_loc='upper right', offset_intersection_text=100):
     """
     Plot SHAP compute time per sample
     """

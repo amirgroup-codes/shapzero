@@ -10,10 +10,8 @@ random.seed(42)
 
 import sys
 sys.path.append('../..')
-from gen.shapzero import plot_shap_values, plot_interactions_summary, top_shap_values
+from gen.shapzero import plot_shap_values, plot_interactions_summary, top_shap_values, top_interactions
 from gen.utils import  plot_time_complexity
-import pickle
-import os
 
 # Import font
 import matplotlib.font_manager as fm
@@ -32,7 +30,7 @@ from matplotlib import gridspec
 font_size = 5
 markersize = 2
 complexity_markersize = 3
-legend_marker_size = 4
+legend_marker_size = 3
 top_values_shap = 50
 mm = 1/25.4  # mm in inches
 property = 'frameshift'
@@ -73,7 +71,7 @@ ax1 = fig.add_subplot(gs[0, 0])
 shap_time = np.load(f'shap_results/time_shap_values_{celltype}.npy')
 overall_shap_time = [shap_time * i for i in num_samples]
 plot_time_complexity(ax1, overall_shap_time, overall_shapzero_time, font_size=font_size, linewidth=linewidth, markersize=complexity_markersize, tot_samples=len(df_heldout), y_limits=bounds, x_label='', offset_intersection_text=70)
-plt.savefig('shap_results/inDelphi_time.pdf', transparent=True, dpi=300)
+plt.savefig('shap_results/inDelphi_time_main.pdf', transparent=True, dpi=300)
 plt.show()
 
 
@@ -110,7 +108,7 @@ ax1 = fig.add_subplot(gs[0, 0])
 shap_zero = np.load(f'shap_results/shapzero_values_{celltype}_{property}.npy')
 shap_zero_trimmed = [shap_zero[i,:] for i in random_indices]
 plot_shap_values(ax1, sequences, shap_zero_trimmed, x_label=None, y_label='SHAP value \n using SHAP Zero', y_limits=bounds, font_size=font_size, markersize=markersize, legend=True, legend_marker_size=legend_marker_size, linewidth=linewidth)
-top_shap_values(sequences, shap_zero_trimmed, top_values=20)
+top_shap_values(sequences, shap_zero_trimmed, top_values=20, filename=f'shap_results/{celltype}_{property}_shap_values')
 
 
 
@@ -123,7 +121,8 @@ shapzero_interactions_sequences = shapzero_interactions['interactions_sequences'
 shapzero_sequences = shapzero_interactions['sequences']
 encoding = {0:'A', 1:'C', 2:'T', 3:'G'}
 sequences = [''.join(encoding[num] for num in row) for row in shapzero_sequences]
-plot_interactions_summary(ax3, sequences, shapzero_interactions_sequences,  x_label='Target sequence position', y_label='Faith-Shap interaction \n using F-SHAP', font_size=font_size, markersize=markersize, legend=False, linewidth=linewidth, print_top_interactions=True, top_values=20)
+plot_interactions_summary(ax3, sequences, shapzero_interactions_sequences,  x_label='Target sequence position', y_label='Faith-Shap interaction \n using SHAP Zero', font_size=font_size, markersize=markersize, legend=False, linewidth=linewidth)
+top_interactions(sequences, shapzero_interactions_sequences, top_values=20, filename=f'shap_results/{celltype}_{property}_fsi')
 
 
 
@@ -135,6 +134,6 @@ x_valid = np.load(f'shap_results/fsi_{celltype}_{property}_samples.npy')
 sequences = [''.join(encoding[num] for num in row) for row in x_valid]
 shap_interactions = np.load(f'shap_results/fsi_{celltype}_{property}.pickle', allow_pickle=True)
 plot_interactions_summary(ax4, sequences, shap_interactions,  x_label='Target sequence position', y_label='Faith-Shap interaction \n using SHAP-IQ', font_size=font_size, markersize=markersize, legend=False, linewidth=linewidth)
-plt.savefig('shap_results/inDelphi_shap.pdf', transparent=True, dpi=300)
+plt.savefig('shap_results/inDelphi_shap_main.pdf', transparent=True, dpi=300)
 plt.show()
 

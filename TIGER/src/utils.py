@@ -59,3 +59,59 @@ def process_titration(df_titration):
     Compute the mean of guide scores for each target sequence
     """
     return df_titration.groupby('Transcript ID')['Guide Score'].mean().tolist()
+
+
+def get_predictions_shap_ontarget(X):
+    """
+    Takes in a matrix X (# samples x # features) and runs TIGER. Output is a numpy array length # samples
+    """
+    tiger_dir = '../tiger/hugging_face/'
+    postprocess = True
+    mode = 'all'
+    processor = TranscriptProcessor(tiger_dir=tiger_dir, postprocess=postprocess, mode=mode, gpu_num=0)
+    batch_size = 512
+    indices_nucleotides = [[encoding[num] for num in row] for row in X]
+    indices_nucleotides = [list(map(str, row)) for row in indices_nucleotides]
+    indices_nucleotides = [''.join(row) for row in indices_nucleotides]
+    all_samples = []
+    """
+    Process experimental samples
+    """
+    with tqdm(total=len(indices_nucleotides), desc="Processing experimental samples") as pbar:
+        for seq_batch in batch_load(indices_nucleotides, batch_size):
+            df_on_target, _, _ = batch_prediction(seq_batch, processor=processor)
+            on_target_scores_batch = process_on_target(df_on_target)
+            all_samples = all_samples + on_target_scores_batch
+            pbar.update(len(seq_batch))
+
+    all_samples = np.array(all_samples) 
+    return all_samples
+
+
+def get_predictions_shap_titration(X):
+    """
+    Takes in a matrix X (# samples x # features) and runs TIGER. Output is a numpy array length # samples
+    """
+    tiger_dir = '../tiger/hugging_face/'
+    postprocess = True
+    mode = 'titration'
+    processor = TranscriptProcessor(tiger_dir=tiger_dir, postprocess=postprocess, mode=mode, gpu_num=0)
+    batch_size = 512
+
+    indices_nucleotides = [[encoding[num] for num in row] for row in X]
+    indices_nucleotides = [list(map(str, row)) for row in indices_nucleotides]
+    indices_nucleotides = [''.join(row) for row in indices_nucleotides]
+    all_samples = []
+
+    """
+    Process experimental samples
+    """
+    with tqdm(total=len(indices_nucleotides), desc="Processing experimental samples") as pbar:
+        for seq_batch in batch_load(indices_nucleotides, batch_size):
+            _, df_titration, _ = batch_prediction(seq_batch, processor=processor)
+            titration_scores_batch = process_titration(df_titration)
+            all_samples = all_samples + titration_scores_batch
+            pbar.update(len(seq_batch))
+
+    all_samples = np.array(all_samples) 
+    return all_samples

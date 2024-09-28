@@ -42,5 +42,15 @@ TIGER/results/q4_n26_b7/qsft_transform_titration.pickle
 TIGER/results/q4_n26_b7/helper_results_titration.txt
 TIGER/results/q4_n26_b7/magnitude_of_interactions*.png
 TIGER/results/q4_n26_b7/test_samples*.png
+TIGER/figures/shap_results/fsi_titration*.npy
+TIGER/figures/shap_results/shap_values_titration.npy
+TIGER/figures/shap_results/shapzero_fsi_titration.npz
+TIGER/figures/shap_results/time_fsi_titration.npy
+TIGER/figures/shap_results/time_per_sample_titration.npy
+TIGER/figures/shap_results/time_shap_values_titration.npy
+TIGER/figures/shap_results/time_shapzero_fsi_titration.npy
+TIGER/figures/shap_results/time_shapzero_values_titration.npy
+TIGER/figures/shap_results/time_per_sample_titration.npy
+
 !TIGER/results/q4_n26_b7/magnitude_of_interactions_on_target.png
 !TIGER/results/q4_n26_b7/test_samples_on_target.png

@@ -4,6 +4,7 @@ from itertools import combinations, product
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+import pandas as pd
 
 class shapzero:
     def __init__(self, transform, q, n):
@@ -241,7 +242,7 @@ class shapzero:
         return xM_value
     
 
-def plot_shap_values(ax, sequences, shap_values, colors=None, markers=None, x_label='Sequence position', y_label='SHAP value', y_limits=None, font_size=5, markersize=0.25, legend=True, legend_marker_size = 4, linewidth=0.25):
+def plot_shap_values(ax, sequences, shap_values, colors=None, markers=None, x_label='Sequence position', y_label='SHAP value', y_limits=None, font_size=5, markersize=0.25, legend=True, legend_marker_size=3, linewidth=0.25):
     """
     Plots SHAP values for target sequences on the provided axis.
 
@@ -301,7 +302,7 @@ def plot_shap_values(ax, sequences, shap_values, colors=None, markers=None, x_la
         legend_plt.get_frame().set_linewidth(linewidth)
 
 
-def top_shap_values(sequences, shap_values, top_values=10):
+def top_shap_values(sequences, shap_values, top_values=10, filename='shap_values'):
     """
     Returns the top SHAP values.
 
@@ -310,12 +311,10 @@ def top_shap_values(sequences, shap_values, top_values=10):
         shap_values (np.ndarray): SHAP values for the sequences.
         colors (dict, optional): Dictionary mapping nucleotides as strings of letters to colors. If none specified, use default colors.
         top_values (int, optional): Number of top interactions to print.
+        filename (str, optional): Name of the file to save the top interactions to as a csv.
     """
     sequences = [list(seq) for seq in sequences]
     seq_length = len(sequences[0])
-#  for key, value in shap_interactions_min_order.items():
-#             nucleotides = [sequence_i[pos] for pos in key]
-#             nuc_pos = tuple((tuple(nucleotides), key))
     all_interactions_positive = {}
     all_interactions_positive_count = {}
     all_interactions_negative = {}
@@ -336,15 +335,6 @@ def top_shap_values(sequences, shap_values, top_values=10):
         interaction_values_average_positive[key] = value / all_interactions_positive_count[key]
     for key, value in all_interactions_negative.items():
         interaction_values_average_negative[key] = value / all_interactions_negative_count[key]
-    # interaction_values_average = {} # Count how many times each nucleotide is present for averaging
-    # for seq in sequences:
-    #     for pos in range(seq_length):
-    #         interaction_values_average[tuple([pos, seq[pos]])] = interaction_values_average.get(tuple([pos, seq[pos]]), 0) + 1
-    # print(all_interactions_positive)
-    # print(interaction_values_average)
-    # Get average contribution among all sequences
-    # interaction_values_positive = {key: all_interactions_positive[key] / interaction_values_average[key] for key in all_interactions_positive if key in interaction_values_average}
-    # interaction_values_negative = {key: all_interactions_negative[key] / interaction_values_average[key] for key in all_interactions_negative if key in interaction_values_average}
 
     interaction_values_positive = dict(sorted(interaction_values_average_positive.items(), key=lambda item: np.abs(item[1]), reverse=True))
     interaction_values_negative = dict(sorted(interaction_values_average_negative.items(), key=lambda item: np.abs(item[1]), reverse=True))
@@ -357,11 +347,17 @@ def top_shap_values(sequences, shap_values, top_values=10):
     print(f"Top negative interactions:")
     for key, value in top_negative.items():
         print(f"{key}: {value}")
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
+    
+    # Save to CSV:
+    data = []
+    for key, value in top_positive.items():
+        position, feature = key
+        data.append(['Positive', position, feature, value])
+    for key, value in top_negative.items():
+        position, feature = key
+        data.append(['Negative', position, feature, value])
+    df = pd.DataFrame(data, columns=['Sign', 'Position', 'Feature', 'Average value'])
+    df.to_csv(f'{filename}.csv', index=False)
 
 
 def plot_interactions(ax, sequences, shap_interactions, top_values=None, colors=None, markers=None, x_label='Sequence position', y_label='SHAP value', y_limits=None, font_size=5, markersize=0.25, legend=True, legend_marker_size=3, linewidth=0.25):
@@ -460,12 +456,12 @@ def plot_interactions(ax, sequences, shap_interactions, top_values=None, colors=
         labels = list(colors.keys())
         handles = []
         for label in labels:
-            handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=colors.get(label), markersize=legend_marker_size + marker_size_adjustments.get(markers.get(label, 'o'), 0)))
+            handles.append(plt.Line2D([0], [0], marker=markers.get(label, 'o'), color='w', markerfacecolor=colors.get(label), markersize=legend_marker_size + marker_size_adjustments.get(markers.get(label, 'o'), 0)))
         legend_plt = ax.legend(handles, labels, loc='upper right', framealpha=1, ncol=len(labels), handletextpad=0.1, columnspacing=0.5, fontsize=font_size)
         legend_plt.get_frame().set_linewidth(linewidth)
 
 
-def plot_interactions_summary(ax, sequences, shap_interactions, min_order = 2, colors=None, x_label='Sequence position', y_label='SHAP interaction', y_limits=None, font_size=5, markersize=0.25, legend=True, legend_marker_size=3, linewidth=0.2, barwidth=0.4, print_top_interactions=False, top_values=10):
+def plot_interactions_summary(ax, sequences, shap_interactions, min_order = 2, colors=None, x_label='Sequence position', y_label='SHAP interaction', y_limits=None, font_size=5, markersize=0.25, legend=True, legend_marker_size=3, linewidth=0.2, barwidth=0.4):
     """
     Plots a bar graph of the average contribution of interactions on the provided axis.
 
@@ -478,8 +474,6 @@ def plot_interactions_summary(ax, sequences, shap_interactions, min_order = 2, c
         font_size (int, optional): Font size for labels.
         markersize (int, optional): Marker size for scatter points.
         barwidth (int, optional): Bar width for plotting.
-        print_top_interactions (bool, optional): If true, prints the top 10 interactions.
-        top_interactions (int, optional): Number of top interactions to print if print_top_interactions is true.
     """
     sequences = [list(seq) for seq in sequences]
     seq_length = len(sequences[0])
@@ -490,24 +484,12 @@ def plot_interactions_summary(ax, sequences, shap_interactions, min_order = 2, c
     # Condense higher order interactions per position
     interaction_values_positive = {}
     interaction_values_negative = {}
-    # For printing
-    all_interactions_positive = {}
-    all_interactions_positive_count = {}
-    all_interactions_negative = {}
-    all_interactions_negative_count = {}
     for (shap_interaction, sequence) in zip(shap_interactions, sequences):
         shap_interactions_min_order = {key: value for key, value in shap_interaction.items() if sum(1 for element in key if element != 0) >= min_order}
         sequence_i = list(sequence)
         
         for key, value in shap_interactions_min_order.items():
             nucleotides = [sequence_i[pos] for pos in key]
-            nuc_pos = tuple((tuple(nucleotides), key))
-            if value > 0:
-                all_interactions_positive[nuc_pos] = all_interactions_positive.get(nuc_pos, 0) + value
-                all_interactions_positive_count[nuc_pos] = all_interactions_positive_count.get(nuc_pos, 0) + 1
-            elif value < 0:
-                all_interactions_negative[nuc_pos] = all_interactions_negative.get(nuc_pos, 0) + value
-                all_interactions_negative_count[nuc_pos] = all_interactions_negative_count.get(nuc_pos, 0) + 1
             # Distribute interaction values evenly across the affected positions, making sure to keep track of the nucleotide. Denote whether the interaction is positive or negative
             for pos in key:
                 if value > 0:
@@ -519,14 +501,6 @@ def plot_interactions_summary(ax, sequences, shap_interactions, min_order = 2, c
     for seq in sequences:
         for pos in range(seq_length):
             interaction_values_average[tuple([pos, seq[pos]])] = interaction_values_average.get(tuple([pos, seq[pos]]), 0) + 1
-
-    # For printing
-    interaction_values_average_positive = {}
-    interaction_values_average_negative = {}
-    for key, value in all_interactions_positive.items():
-        interaction_values_average_positive[key] = value / all_interactions_positive_count[key]
-    for key, value in all_interactions_negative.items():
-        interaction_values_average_negative[key] = value / all_interactions_negative_count[key]
 
     # Get average contribution among all sequences
     interaction_values_positive = {key: interaction_values_positive[key] / interaction_values_average[key] for key in interaction_values_positive if key in interaction_values_average}
@@ -582,18 +556,70 @@ def plot_interactions_summary(ax, sequences, shap_interactions, min_order = 2, c
         legend_plt = ax.legend(handles, labels, loc='upper right', framealpha=1, ncol=len(labels), handletextpad=0.1, columnspacing=0.5, fontsize=font_size)
         legend_plt.get_frame().set_linewidth(linewidth)
 
-    if print_top_interactions:
-        interaction_values_average_positive = dict(sorted(interaction_values_average_positive.items(), key=lambda item: np.abs(item[1]), reverse=True))
-        interaction_values_average_negative = dict(sorted(interaction_values_average_negative.items(), key=lambda item: np.abs(item[1]), reverse=True))
-        top_positive = dict(list(interaction_values_average_positive.items())[:top_values])
-        top_negative = dict(list(interaction_values_average_negative.items())[:top_values])
 
-        print(f"Top positive interactions:")
-        for key, value in top_positive.items():
-            print(f"{key}: {value}")
-        print(f"Top negative interactions:")
-        for key, value in top_negative.items():
-            print(f"{key}: {value}")
+def top_interactions(sequences, shap_interactions, top_values=10, filename='interactions', min_order=2):
+    """
+    Returns the top interactions.
+
+    Parameters:
+        sequences (list): List of sequences as strings.
+        shap_interactions (list of dict): SHAP interaction values for each sample. Keys are a tuple of positions, values are the associated SHAP interaction values.
+        top_values (int, optional): Number of top interactions to print.
+        filename (str, optional): Name of the file to save the top interactions to as a csv.
+        min_order (int, optional): Filters out interactions with orders less than the specified value.
+    """
+    sequences = [list(seq) for seq in sequences]
+    seq_length = len(sequences[0])
+
+    all_interactions_positive = {}
+    all_interactions_positive_count = {}
+    all_interactions_negative = {}
+    all_interactions_negative_count = {}
+    for (shap_interaction, sequence) in zip(shap_interactions, sequences):
+        shap_interactions_min_order = {key: value for key, value in shap_interaction.items() if sum(1 for element in key if element != 0) >= min_order}
+        sequence_i = list(sequence)
+        
+        for key, value in shap_interactions_min_order.items():
+            nucleotides = [sequence_i[pos] for pos in key]
+            nuc_pos = tuple((tuple(nucleotides), key))
+            if value > 0:
+                all_interactions_positive[nuc_pos] = all_interactions_positive.get(nuc_pos, 0) + value
+                all_interactions_positive_count[nuc_pos] = all_interactions_positive_count.get(nuc_pos, 0) + 1
+            elif value < 0:
+                all_interactions_negative[nuc_pos] = all_interactions_negative.get(nuc_pos, 0) + value
+                all_interactions_negative_count[nuc_pos] = all_interactions_negative_count.get(nuc_pos, 0) + 1
+
+
+    interaction_values_average_positive = {}
+    interaction_values_average_negative = {}
+    for key, value in all_interactions_positive.items():
+        interaction_values_average_positive[key] = value / all_interactions_positive_count[key]
+    for key, value in all_interactions_negative.items():
+        interaction_values_average_negative[key] = value / all_interactions_negative_count[key]
+
+
+    interaction_values_average_positive = dict(sorted(interaction_values_average_positive.items(), key=lambda item: np.abs(item[1]), reverse=True))
+    interaction_values_average_negative = dict(sorted(interaction_values_average_negative.items(), key=lambda item: np.abs(item[1]), reverse=True))
+    top_positive = dict(list(interaction_values_average_positive.items())[:top_values])
+    top_negative = dict(list(interaction_values_average_negative.items())[:top_values])
+
+    print(f"Top positive interactions:")
+    for key, value in top_positive.items():
+        print(f"{key}: {value}")
+    print(f"Top negative interactions:")
+    for key, value in top_negative.items():
+        print(f"{key}: {value}")
+
+    # Save to CSV
+    data = []
+    for key, value in top_positive.items():
+        features, positions = key
+        data.append(['Positive', ', '.join(map(str, positions)), ', '.join(features), value])
+    for key, value in top_negative.items():
+        features, positions = key
+        data.append(['Negative', ', '.join(map(str, positions)), ', '.join(features), value])
+    df = pd.DataFrame(data, columns=['Sign', 'Position', 'Feature', 'Average value'])
+    df.to_csv(f'{filename}.csv', index=False)
 
 
 def group_by_position(data, seq_length, nucleotides):
