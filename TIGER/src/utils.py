@@ -7,6 +7,7 @@ import shap
 import pandas as pd
 from tqdm import tqdm
 encoding = {0:'A', 1:'C', 2:'T', 3:'G'}
+import torch
 
 from tiger_class import TranscriptProcessor
 UNIT_INTERVAL_MAP = 'sigmoid'
@@ -70,6 +71,8 @@ def get_predictions_shap_ontarget(X):
     mode = 'all'
     processor = TranscriptProcessor(tiger_dir=tiger_dir, postprocess=postprocess, mode=mode, gpu_num=0)
     batch_size = 512
+    if type(X) == torch.Tensor:
+        X = X.cpu().numpy()
     indices_nucleotides = [[encoding[num] for num in row] for row in X]
     indices_nucleotides = [list(map(str, row)) for row in indices_nucleotides]
     indices_nucleotides = [''.join(row) for row in indices_nucleotides]
@@ -114,4 +117,52 @@ def get_predictions_shap_titration(X):
             pbar.update(len(seq_batch))
 
     all_samples = np.array(all_samples) 
+    return all_samples
+
+
+def deepshap_batch_explain(processor=None, train_data=None, heldout_data=None):
+    df_shap = processor.deepshap_explain_model(train_data=train_data, heldout_data=heldout_data)
+
+    return df_shap
+
+
+def get_predictions_fastshap_on_target(X, property='on_target'): 
+    import torch
+    if type(X) == torch.Tensor:
+        X = X.cpu().numpy()
+        
+    ind = range(X.shape[0])
+    all_samples = np.zeros(np.shape(X)[0])
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    df_sequences = pd.read_csv(os.path.join(script_dir, '..', 'figures/data', '{}_train.csv'.format(property)))
+    indices_nucleotides = [[encoding[num] for num in row] for row in X]
+    indices_nucleotides = [list(map(str, row)) for row in indices_nucleotides]
+    seqs = [''.join(row) for row in indices_nucleotides]
+
+    with tqdm(total=len(seqs), desc="Computing samples") as pbar:
+        for (i, seq) in zip(ind, seqs):
+            prop = df_sequences.loc[df_sequences['Full Sequence'] == seq, 'observed_lfc'].values[0] 
+            all_samples[i] = prop
+            pbar.update()
+    return all_samples
+
+
+def get_predictions_fastshap_titration(X, property='titration'): 
+    import torch
+    if type(X) == torch.Tensor:
+        X = X.cpu().numpy()
+        
+    ind = range(X.shape[0])
+    all_samples = np.zeros(np.shape(X)[0])
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    df_sequences = pd.read_csv(os.path.join(script_dir, '..', 'figures/data', '{}_train.csv'.format(property)))
+    indices_nucleotides = [[encoding[num] for num in row] for row in X]
+    indices_nucleotides = [list(map(str, row)) for row in indices_nucleotides]
+    seqs = [''.join(row) for row in indices_nucleotides]
+
+    with tqdm(total=len(seqs), desc="Computing samples") as pbar:
+        for (i, seq) in zip(ind, seqs):
+            prop = df_sequences.loc[df_sequences['Full Sequence'] == seq, 'observed_lfc'].values[0] 
+            all_samples[i] = prop
+            pbar.update()
     return all_samples

@@ -39,94 +39,104 @@ num_background_samples = 30
 df_background = df_train.sample(n=num_background_samples, random_state=42)
 background = df_str_to_encoding(df_background)
 
-# Compute Shapley values
+# # Compute SHAP values for held-out data
+# x_valid = df_str_to_encoding(df)
+# start_time = time.time()
+e = shap.KernelExplainer(get_predictions_shap, background)
+# shap_values = e.shap_values(x_valid)
+# end_time = time.time()
+# elapsed_time = end_time - start_time
+# average_time_per_sample = elapsed_time / np.shape(x_valid)[0]
+# np.save('shap_results/time_shap_values_{}.npy'.format(celltype), average_time_per_sample)
+# np.save('shap_results/shap_values_{}.npy'.format(celltype), shap_values)
+
+# Compute SHAP values for a portion of training data as well
+df_training_samples = df_train[~df_train.index.isin(df_background.index)].sample(n=30, random_state=42)
+df_training_samples.to_csv('data/extra_shap_samples_{}.csv'.format(celltype))
 x_valid = df_str_to_encoding(df)
 start_time = time.time()
-e = shap.KernelExplainer(get_predictions_shap, background)
 shap_values = e.shap_values(x_valid)
 end_time = time.time()
 elapsed_time = end_time - start_time
-average_time_per_sample = elapsed_time / np.shape(x_valid)[0]
+original_time = np.load('shap_results/time_shap_values_{}.npy'.format(celltype))
+new_total_time = original_time + elapsed_time
+average_time_per_sample = new_total_time / (np.shape(x_valid)[0] + len(df))
 np.save('shap_results/time_shap_values_{}.npy'.format(celltype), average_time_per_sample)
-np.save('shap_results/shap_values_{}.npy'.format(celltype), shap_values)
+np.save('shap_results/shap_values_extra{}.npy'.format(celltype), shap_values)
 
 
 
-# Compute interactions using SHAP-IQ for HEK293 frameshift
-property = 'frameshift'
-num_iq_valid_samples = 4
-np.random.shuffle(x_valid)
-x_valid = np.array(x_valid)[0:num_iq_valid_samples,:]
-np.save('shap_results/fsi_{}_{}_samples.npy'.format(celltype, property), x_valid)
+# # Compute interactions using SHAP-IQ for HEK293 frameshift
+# property = 'frameshift'
+# num_iq_valid_samples = 4
+# np.random.shuffle(x_valid)
+# x_valid = np.array(x_valid)[0:num_iq_valid_samples,:]
+# np.save('shap_results/fsi_{}_{}_samples.npy'.format(celltype, property), x_valid)
 
-start_time = time.time()
-shap_interactions = []
-for x in tqdm(x_valid, desc="Computing interactions"):
-    explainer = shapiq.TabularExplainer(
-        model=get_predictions_fsi_HEK293_frameshift,
-        data=background,
-        index="FSII",
-        max_order=max_order,
-    )
-    interaction_values = explainer.explain(x, budget=budget)
+# start_time = time.time()
+# shap_interactions = []
+# for x in tqdm(x_valid, desc="Computing interactions"):
+#     explainer = shapiq.TabularExplainer(
+#         model=get_predictions_fsi_HEK293_frameshift,
+#         data=background,
+#         index="FSII",
+#         max_order=max_order,
+#     )
+#     interaction_values = explainer.explain(x, budget=budget)
 
-    # Save out data
-    interactions = interaction_values.interaction_lookup.copy()
-    interactions = OrderedDict(sorted(interactions.items(), key=lambda item: item[1]))
-    vals = interaction_values.values.copy()
-    keys = list(interactions.keys())
-    for i, key in enumerate(keys):
-        interactions[key] = vals[i]
-    shap_interactions.append(interactions)
+#     # Save out data
+#     interactions = interaction_values.interaction_lookup.copy()
+#     interactions = OrderedDict(sorted(interactions.items(), key=lambda item: item[1]))
+#     vals = interaction_values.values.copy()
+#     keys = list(interactions.keys())
+#     for i, key in enumerate(keys):
+#         interactions[key] = vals[i]
+#     shap_interactions.append(interactions)
 
-end_time = time.time()
-elapsed_time = end_time - start_time
-average_time_per_sample = elapsed_time / np.shape(x_valid)[0]
-np.save('shap_results/time_fsi_{}_{}.npy'.format(celltype, property), average_time_per_sample)
-with open('shap_results/fsi_{}_{}.pickle'.format(celltype, property), 'wb') as file:
-    pickle.dump(shap_interactions, file)     
-
-
-
-# 1-bp-ins
-property = '1bpins'
-num_iq_valid_samples = 4
-np.random.shuffle(x_valid)
-x_valid = np.array(x_valid)[0:num_iq_valid_samples,:]
-np.save('shap_results/fsi_{}_{}_samples.npy'.format(celltype, property), x_valid)
-
-start_time = time.time()
-shap_interactions = []
-for x in tqdm(x_valid, desc="Computing interactions"):
-    explainer = shapiq.TabularExplainer(
-        model=get_predictions_fsi_HEK293_1bpins,
-        data=background,
-        index="FSII",
-        max_order=max_order,
-    )
-    interaction_values = explainer.explain(x, budget=budget)
-
-    # Save out data
-    interactions = interaction_values.interaction_lookup.copy()
-    interactions = OrderedDict(sorted(interactions.items(), key=lambda item: item[1]))
-    vals = interaction_values.values.copy()
-    keys = list(interactions.keys())
-    for i, key in enumerate(keys):
-        interactions[key] = vals[i]
-    shap_interactions.append(interactions)
-
-end_time = time.time()
-elapsed_time = end_time - start_time
-average_time_per_sample = elapsed_time / np.shape(x_valid)[0]
-np.save('shap_results/time_fsi_{}_{}.npy'.format(celltype, property), average_time_per_sample)
-with open('shap_results/fsi_{}_{}.pickle'.format(celltype, property), 'wb') as file:
-    pickle.dump(shap_interactions, file)     
+# end_time = time.time()
+# elapsed_time = end_time - start_time
+# average_time_per_sample = elapsed_time / np.shape(x_valid)[0]
+# np.save('shap_results/time_fsi_{}_{}.npy'.format(celltype, property), average_time_per_sample)
+# with open('shap_results/fsi_{}_{}.pickle'.format(celltype, property), 'wb') as file:
+#     pickle.dump(shap_interactions, file)     
 
 
 
-"""
-Run Kernel SHAP and SHAP-IQ for U2OS
-"""
+# # 1-bp-ins
+# property = '1bpins'
+# num_iq_valid_samples = 4
+# np.random.shuffle(x_valid)
+# x_valid = np.array(x_valid)[0:num_iq_valid_samples,:]
+# np.save('shap_results/fsi_{}_{}_samples.npy'.format(celltype, property), x_valid)
+
+# start_time = time.time()
+# shap_interactions = []
+# for x in tqdm(x_valid, desc="Computing interactions"):
+#     explainer = shapiq.TabularExplainer(
+#         model=get_predictions_fsi_HEK293_1bpins,
+#         data=background,
+#         index="FSII",
+#         max_order=max_order,
+#     )
+#     interaction_values = explainer.explain(x, budget=budget)
+
+#     # Save out data
+#     interactions = interaction_values.interaction_lookup.copy()
+#     interactions = OrderedDict(sorted(interactions.items(), key=lambda item: item[1]))
+#     vals = interaction_values.values.copy()
+#     keys = list(interactions.keys())
+#     for i, key in enumerate(keys):
+#         interactions[key] = vals[i]
+#     shap_interactions.append(interactions)
+
+# end_time = time.time()
+# elapsed_time = end_time - start_time
+# average_time_per_sample = elapsed_time / np.shape(x_valid)[0]
+# np.save('shap_results/time_fsi_{}_{}.npy'.format(celltype, property), average_time_per_sample)
+# with open('shap_results/fsi_{}_{}.pickle'.format(celltype, property), 'wb') as file:
+#     pickle.dump(shap_interactions, file)     
+
+
 
 
 

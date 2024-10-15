@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import pandas as pd
+from scipy.stats import pearsonr
 
 class shapzero:
     def __init__(self, transform, q, n):
@@ -242,7 +243,7 @@ class shapzero:
         return xM_value
     
 
-def plot_shap_values(ax, sequences, shap_values, colors=None, markers=None, x_label='Sequence position', y_label='SHAP value', y_limits=None, font_size=5, markersize=0.25, legend=True, legend_marker_size=3, linewidth=0.25):
+def plot_shap_values(ax, sequences, shap_values, colors=None, markers=None, x_label='Sequence position', y_label='SHAP value', y_limits=None, font_size=6, markersize=0.25, legend=True, legend_marker_size=3, linewidth=0.25):
     """
     Plots SHAP values for target sequences on the provided axis.
 
@@ -327,7 +328,7 @@ def top_shap_values(sequences, shap_values, top_values=10, filename='shap_values
                 all_interactions_positive_count[nuc_pos] = all_interactions_positive_count.get(nuc_pos, 0) + 1
             elif value < 0:
                 all_interactions_negative[nuc_pos] = all_interactions_negative.get(nuc_pos, 0) + value
-                all_interactions_negative_count[nuc_pos] = all_interactions_positive_count.get(nuc_pos, 0) + 1
+                all_interactions_negative_count[nuc_pos] = all_interactions_negative_count.get(nuc_pos, 0) + 1
 
     interaction_values_average_positive = {}
     interaction_values_average_negative = {}
@@ -360,7 +361,7 @@ def top_shap_values(sequences, shap_values, top_values=10, filename='shap_values
     df.to_csv(f'{filename}.csv', index=False)
 
 
-def plot_interactions(ax, sequences, shap_interactions, top_values=None, colors=None, markers=None, x_label='Sequence position', y_label='SHAP value', y_limits=None, font_size=5, markersize=0.25, legend=True, legend_marker_size=3, linewidth=0.25):
+def plot_interactions(ax, sequences, shap_interactions, top_values=None, colors=None, markers=None, x_label='Sequence position', y_label='SHAP value', y_limits=None, font_size=6, markersize=0.25, legend=True, legend_marker_size=3, linewidth=0.25):
     """
     Plots the top interactions on the provided axis.
 
@@ -461,7 +462,7 @@ def plot_interactions(ax, sequences, shap_interactions, top_values=None, colors=
         legend_plt.get_frame().set_linewidth(linewidth)
 
 
-def plot_interactions_summary(ax, sequences, shap_interactions, min_order = 2, colors=None, x_label='Sequence position', y_label='SHAP interaction', y_limits=None, font_size=5, markersize=0.25, legend=True, legend_marker_size=3, linewidth=0.2, barwidth=0.4):
+def plot_interactions_summary(ax, sequences, shap_interactions, min_order = 2, colors=None, x_label='Sequence position', y_label='SHAP interaction', y_limits=None, font_size=6, legend=True, legend_marker_size=3, linewidth=0.2, barwidth=0.4, print_ratio=None):
     """
     Plots a bar graph of the average contribution of interactions on the provided axis.
 
@@ -474,6 +475,7 @@ def plot_interactions_summary(ax, sequences, shap_interactions, min_order = 2, c
         font_size (int, optional): Font size for labels.
         markersize (int, optional): Marker size for scatter points.
         barwidth (int, optional): Bar width for plotting.
+        print_ratio (float, optional): Prints the percentage of interactions for different models.
     """
     sequences = [list(seq) for seq in sequences]
     seq_length = len(sequences[0])
@@ -489,7 +491,6 @@ def plot_interactions_summary(ax, sequences, shap_interactions, min_order = 2, c
         sequence_i = list(sequence)
         
         for key, value in shap_interactions_min_order.items():
-            nucleotides = [sequence_i[pos] for pos in key]
             # Distribute interaction values evenly across the affected positions, making sure to keep track of the nucleotide. Denote whether the interaction is positive or negative
             for pos in key:
                 if value > 0:
@@ -508,6 +509,45 @@ def plot_interactions_summary(ax, sequences, shap_interactions, min_order = 2, c
     plotting_keys = list(reversed(list(colors.keys())))
     grouped_positive = group_by_position(interaction_values_positive, seq_length, plotting_keys)
     grouped_negative = group_by_position(interaction_values_negative, seq_length, plotting_keys)
+
+    if print_ratio == 'tiger':
+        # Return ratio of interactions in the seed region
+        seed_sum = 0
+        total_sum = 0
+
+        # Iterate through both lists
+        for position, values in grouped_positive.items():
+            if 6-1 <= position <= 12-1:
+                seed_sum += sum(abs(value) for value in values.values())
+            total_sum += sum(abs(value) for value in values.values())
+
+        for position, values in grouped_negative.items():
+            if 6-1 <= position <= 12-1:
+                seed_sum += sum(abs(value) for value in values.values())
+            total_sum += sum(abs(value) for value in values.values())
+
+        # Calculate the ratio
+        ratio = seed_sum / total_sum if total_sum != 0 else 0
+        print('Percentage of interactions in the seed region: ', ratio * 100)
+    elif print_ratio == 'inDelphi':
+        # Return ratio of interactions +/- 3 away from the cutsite
+        seed_sum = 0
+        total_sum = 0
+
+        # Iterate through both lists
+        for position, values in grouped_positive.items():
+            if 18-1 <= position <= 23-1:
+                seed_sum += sum(abs(value) for value in values.values())
+            total_sum += sum(abs(value) for value in values.values())
+
+        for position, values in grouped_negative.items():
+            if 18-1 <= position <= 23-1:
+                seed_sum += sum(abs(value) for value in values.values())
+            total_sum += sum(abs(value) for value in values.values())
+
+        # Calculate the ratio
+        ratio = seed_sum / total_sum if total_sum != 0 else 0
+        print('Percentage of interactions +/- 3 away from the cutsite: ', ratio * 100)
 
     # Plotting
     bottom_positive = np.zeros(seq_length)
@@ -627,3 +667,73 @@ def group_by_position(data, seq_length, nucleotides):
     for (position, nucleotide), value in data.items():
         grouped[position][nucleotide] = value
     return grouped
+
+
+def correlation_shap_values(shapzero, shap):
+    """
+    Pearson correlation of SHAP values
+    """
+    shapzero = shapzero.flatten()
+    shap = shap.flatten()
+    pearson_corr, _ = pearsonr(shapzero, shap)
+    print(f'SHAP pearson correlation: {pearson_corr:.2f}')
+
+
+def correlation_interactions(shapzero, shapzero_sequences, interactions, interactions_sequences):
+    """
+    Pearson correlation of interactions
+    """
+    encoding = {0:'A', 1:'C', 2:'T', 3:'G'}
+    reverse_encoding = {v: k for k, v in encoding.items()}
+    interactions_sequences_encoding = [[reverse_encoding[num] for num in row] for row in interactions_sequences]
+    shapzero_sequences_encoding = [[reverse_encoding[num] for num in row] for row in shapzero_sequences]
+
+    all_interactions = 0
+    all_shapzero_interactions = 0
+    # Only correlate interactions that are shared
+    interactions_corr = {}
+    interactions_shapzero_corr = {}
+
+    for i, (wt, sample) in enumerate(zip(interactions_sequences_encoding, interactions)):
+
+        # Find which interactions in shap match up with shapzero
+        wt = np.array(wt)
+        row_index = np.where(np.all(shapzero_sequences_encoding == wt, axis=1))[0][0]
+        sample_shapzero = shapzero[row_index]
+
+        # Keep track how many interactions there are
+        all_interactions += len(list(sample.values()))
+        all_shapzero_interactions += len(list(sample_shapzero.values()))
+
+        for key, _ in sample_shapzero.items():
+            # Check to make sure the interaction is shared between mobius and shap, then add it to both dictionaries
+            if tuple(list(key)) in sample.keys():
+                interactions_corr[tuple(list(key) + [i])] = sample.get(tuple(list(key)))
+                interactions_shapzero_corr[tuple(list(key) + [i])] = sample_shapzero.get(tuple(list(key)))
+
+    shapzero = list(interactions_shapzero_corr.values())
+    interactions = list(interactions_corr.values())
+    pearson_corr, _ = pearsonr(shapzero, interactions)
+    print(f'Interactions pearson correlation: {pearson_corr:.2f}')
+    print('Fraction of interactions shared with respect to SHAP zero: ', len(shapzero) / all_shapzero_interactions)
+    print('Fraction of interactions shared with respect to SHAP-IQ: ', len(shapzero) / all_interactions)
+
+    # fig, ax = plt.subplots(figsize=(7, 7))
+    # scatter = plt.scatter(shap_values_plotting, mobius_values_plotting, marker='o', color='#3c5488', label='Empirical samples', s=20)  
+
+    # # Fit a linear regression line
+    # coefficients = np.polyfit(shap_values_plotting, mobius_values_plotting, 1)
+    # poly_fit = np.poly1d(coefficients)
+    # line_of_best_fit = poly_fit(shap_values_plotting)
+    # plt.plot(shap_values_plotting, line_of_best_fit, color='#9b9ca0', linewidth=0.5, label='Line of Best Fit')
+
+    # # Set labels and fonts
+    # ax.set_ylabel('Perfect match F-SHAP values', fontsize=font_size)
+    # ax.set_xlabel(f'Perfect match SHAP-IQ FSI values', fontsize=font_size)
+    # ax.tick_params(axis='both', labelsize=font_size, width=0.5)
+    # ax.spines['top'].set_visible(False)
+    # ax.spines['right'].set_visible(False)
+
+    # legend_label = f'Pearson $r$ = {pearson_corr:.2f}'
+    # legend = plt.legend([scatter], [legend_label], fontsize=font_size, loc='lower right')
+    # legend.get_frame().set_linewidth(0.5)

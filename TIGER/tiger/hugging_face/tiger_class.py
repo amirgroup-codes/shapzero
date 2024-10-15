@@ -11,8 +11,11 @@ import shap
 import sys
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(script_dir))
+path_to_remove = '/nethome/dtsui31/.local/lib/python3.10/site-packages'
+if path_to_remove in sys.path:
+    sys.path.remove(path_to_remove)
 # import utils
-from utils import load_arguments
+from utils2 import load_arguments
 from models import build_model
 import hugging_face.tiger as hf
 from data import model_inputs
@@ -487,6 +490,66 @@ class TranscriptProcessor:
         scores = self.model.predict(x, verbose=0).flatten().tolist()
 
         return scores
+
+    def deepshap_explain_model(self, train_data=None, heldout_data=None, num_background_samples=5000):
+        """
+        Modified function from ../tiger/experiments.py
+        """
+        from data import model_inputs 
+        # load common arguments
+        _, normalizer, args = load_arguments()
+
+        # Initialize tiger class that's used for model
+        context = (hf.CONTEXT_5P, hf.CONTEXT_3P)
+        train_data = model_inputs(train_data, context=context, scalar_feats=set())
+        valid_data = model_inputs(heldout_data, context=context, scalar_feats=set())
+        tiger = build_model(name='Tiger2D',
+            target_len=train_data['target_tokens'].shape[1], # For the published model, this is fixed
+            context_5p=train_data['5p_tokens'].shape[1],
+            context_3p=train_data['3p_tokens'].shape[1],
+            use_guide_seq=True,
+            loss_fn='log_cosh',
+            debug=args.debug,
+            output_fn=normalizer.output_fn,
+            **args.kwargs)
+
+        # load model
+        if self.tiger_dir is not None:
+            model_path = os.path.join(self.tiger_dir, 'model')
+        else:
+            model_path = 'model'
+        if os.path.exists(model_path):
+            # with mirrored_strategy.scope():
+            model = tf.keras.models.load_model(model_path)
+            # model = CustomModel(model)  # Replace the loaded model with CustomModel
+            # model.predict = lambda inputs, batch_size=BATCH_SIZE_COMPUTE, verbose=0: custom_predict(model, inputs, batch_size=batch_size, verbose=verbose)
+        else:
+            print('no saved model!')
+            exit()
+
+        # assemble inputs
+        x_train, _, _ = tiger.pack_inputs(train_data)
+        x_valid, _, _ = tiger.pack_inputs(valid_data)
+
+        # select a set of background examples to take an expectation over
+        num_background_samples = min(num_background_samples, x_train.shape[0])
+        background = x_train.numpy()[np.random.choice(x_train.shape[0], num_background_samples, replace=False)]
+
+        # compute Shapley values
+        e = shap.DeepExplainer(model, background)
+        shap_values = e.shap_values(x_valid.numpy())
+
+        # parse Shapley values into a DataFrame and append other relevant information
+        df_shap = tiger.parse_input_scores(shap_values)
+        current_cols = df_shap.columns.to_list()
+        relevant_cols = ['gene', 'target_seq', 'guide_seq', 'guide_type']
+        for col in relevant_cols:
+            df_shap[col] = valid_data[col].numpy()
+            if df_shap[col].dtype == object:
+                df_shap[col] = df_shap[col].apply(lambda x: x.decode('utf-8'))
+        df_shap = df_shap[relevant_cols + current_cols]
+
+        return df_shap
 
 if __name__ == '__main__':
     processor = TranscriptProcessor(mode='titration', check_off_targets=True, fasta_path='path/to/fasta', tiger_dir=None, gpu_num=0)

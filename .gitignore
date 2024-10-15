@@ -54,3 +54,13 @@ TIGER/figures/shap_results/time_per_sample_titration.npy
 
 !TIGER/results/q4_n26_b7/magnitude_of_interactions_on_target.png
 !TIGER/results/q4_n26_b7/test_samples_on_target.png
+
+# Package
+dist/
+README2.md
+shapzero.egg-info/
+test/
+shapzero/
+shapzero/qsft/__pycache__
+build/
+setup.py

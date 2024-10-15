@@ -9,6 +9,7 @@ sys.path.append(indelphi_folder)
 import inDelphi
 import pickle
 import zlib
+import pandas as pd
 
 # Define q-ary encoding 
 encoding = {0:'A', 1:'C', 2:'T', 3:'G'}
@@ -203,3 +204,53 @@ def split_sequence(sequence, num_keep = 10):
     second_half = second_half[:num_keep]
 
     return first_half, second_half
+
+
+def get_predictions_fastshap_HEK293_frameshift(X, celltype='HEK293', property='Frameshift frequency'): 
+    import torch
+    if type(X) == torch.Tensor:
+        X = X.cpu().numpy()
+        
+    ind = range(X.shape[0])
+    all_samples = np.zeros(np.shape(X)[0])
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    df_sequences = pd.read_csv(os.path.join(script_dir, '..', 'figures/data', '{}_train.csv'.format(celltype)))
+    df_sequences['Full sequence'] = df_sequences['Left_seq'] + df_sequences['Right_seq']
+
+    indices_nucleotides = [[encoding[num] for num in row] for row in X]
+    indices_nucleotides = [list(map(str, row)) for row in indices_nucleotides]
+    left_seqs = [''.join(row[:n_2]) for row in indices_nucleotides]
+    right_seqs = [''.join(row[n_2:]) for row in indices_nucleotides]
+
+    with tqdm(total=len(left_seqs), desc="Computing samples") as pbar:
+        for (i, left_seq, right_seq) in zip(ind, left_seqs, right_seqs):
+            seq = left_seq + right_seq
+            prop = df_sequences.loc[df_sequences['Full sequence'] == seq, property].values[0] 
+            all_samples[i] = prop
+            pbar.update()
+    return all_samples
+
+
+def get_predictions_fastshap_HEK293_1bpins(X, celltype='HEK293', property='1bpins'): 
+    import torch
+    if type(X) == torch.Tensor:
+        X = X.cpu().numpy()
+        
+    ind = range(X.shape[0])
+    all_samples = np.zeros(np.shape(X)[0])
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    df_sequences = pd.read_csv(os.path.join(script_dir, '..', 'figures/data', '{}_train.csv'.format(celltype)))
+    df_sequences['Full sequence'] = df_sequences['Left_seq'] + df_sequences['Right_seq']
+
+    indices_nucleotides = [[encoding[num] for num in row] for row in X]
+    indices_nucleotides = [list(map(str, row)) for row in indices_nucleotides]
+    left_seqs = [''.join(row[:n_2]) for row in indices_nucleotides]
+    right_seqs = [''.join(row[n_2:]) for row in indices_nucleotides]
+
+    with tqdm(total=len(left_seqs), desc="Computing samples") as pbar:
+        for (i, left_seq, right_seq) in zip(ind, left_seqs, right_seqs):
+            seq = left_seq + right_seq
+            prop = df_sequences.loc[df_sequences['Full sequence'] == seq, property].values[0] 
+            all_samples[i] = prop
+            pbar.update()
+    return all_samples
