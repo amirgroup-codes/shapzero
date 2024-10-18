@@ -12,7 +12,7 @@ import pandas as pd
 import shap
 import sys
 sys.path.append('..')
-from src.utils import df_str_to_encoding, get_predictions_shap, get_predictions_fsi_HEK293_frameshift, get_predictions_fsi_HEK293_1bpins, get_predictions_fsi_U2OS_1bpins
+from src.utils import df_str_to_encoding, get_predictions_shap, get_predictions_fsi_HEK293_frameshift
 import time
 import shapiq
 from tqdm import tqdm
@@ -39,7 +39,7 @@ num_background_samples = 30
 df_background = df_train.sample(n=num_background_samples, random_state=42)
 background = df_str_to_encoding(df_background)
 
-# # Compute SHAP values for held-out data
+# # # Compute SHAP values for held-out data
 # x_valid = df_str_to_encoding(df)
 # start_time = time.time()
 e = shap.KernelExplainer(get_predictions_shap, background)
@@ -51,19 +51,39 @@ e = shap.KernelExplainer(get_predictions_shap, background)
 # np.save('shap_results/shap_values_{}.npy'.format(celltype), shap_values)
 
 # Compute SHAP values for a portion of training data as well
-df_training_samples = df_train[~df_train.index.isin(df_background.index)].sample(n=30, random_state=42)
-df_training_samples.to_csv('data/extra_shap_samples_{}.csv'.format(celltype))
-x_valid = df_str_to_encoding(df)
+df_training_samples = df_train[~df_train.index.isin(df_background.index)].sample(n=25, random_state=42)
+# df_training_samples.to_csv('data/extra_shap_samples_{}.csv'.format(celltype))
+# x_valid = df_str_to_encoding(df_training_samples)
+# start_time = time.time()
+# shap_values = e.shap_values(x_valid)
+# end_time = time.time()
+# elapsed_time = end_time - start_time
+# average_time_per_sample = elapsed_time / np.shape(x_valid)[0]
+# np.save('shap_results/time_shap_values_extra_{}.npy'.format(celltype), average_time_per_sample)
+# np.save('shap_results/shap_values_extra_{}.npy'.format(celltype), shap_values)
+
+# Compute SHAP values for a portion of training data as well x2 
+df_training_samples = df_train[~df_train.index.isin(df_background.index) & ~df_train.index.isin(df_training_samples.index)].sample(n=25, random_state=42)
+df_training_samples.to_csv('data/extra_shap_samples_{}_x2.csv'.format(celltype))
+x_valid = df_str_to_encoding(df_training_samples)
 start_time = time.time()
 shap_values = e.shap_values(x_valid)
 end_time = time.time()
 elapsed_time = end_time - start_time
-original_time = np.load('shap_results/time_shap_values_{}.npy'.format(celltype))
-new_total_time = original_time + elapsed_time
-average_time_per_sample = new_total_time / (np.shape(x_valid)[0] + len(df))
-np.save('shap_results/time_shap_values_{}.npy'.format(celltype), average_time_per_sample)
-np.save('shap_results/shap_values_extra{}.npy'.format(celltype), shap_values)
+average_time_per_sample = elapsed_time / np.shape(x_valid)[0]
+np.save('shap_results/time_shap_values_extra_{}_x2.npy'.format(celltype), average_time_per_sample)
+np.save('shap_results/shap_values_extra_{}_x2.npy'.format(celltype), shap_values)
 
+# df_training_samples = df_train[~df_train.index.isin(df_background.index)].sample(n=25, random_state=42)
+# df_training_samples.to_csv('data/extra_shap_samples_{}.csv'.format(celltype))
+# x_valid = df_str_to_encoding(df_training_samples)
+# start_time = time.time()
+# shap_values = e.shap_values(x_valid)
+# end_time = time.time()
+# elapsed_time = end_time - start_time
+# average_time_per_sample = elapsed_time / np.shape(x_valid)[0]
+# np.save('shap_results/time_shap_values_extra_{}.npy'.format(celltype), average_time_per_sample)
+# np.save('shap_results/shap_values_extra_{}.npy'.format(celltype), shap_values)
 
 
 # # Compute interactions using SHAP-IQ for HEK293 frameshift

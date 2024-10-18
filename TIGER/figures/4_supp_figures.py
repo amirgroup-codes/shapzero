@@ -10,8 +10,8 @@ random.seed(42)
 
 import sys
 sys.path.append('../..')
-from gen.shapzero import plot_shap_values, correlation_shap_values
-from gen.utils import  plot_multiple_time_complexity
+from gen.shapzero import plot_shap_values, correlation_shap_values, plot_interactions, top_shap_values
+from gen.utils import plot_multiple_time_complexity
 
 # Import font
 import matplotlib.font_manager as fm
@@ -71,7 +71,9 @@ ax1 = fig.add_subplot(gs[0, 0])
 sequences = df_heldout['Full Sequence'].values
 sequences_trimmed = sequences[random_indices]
 shap_values_trimmed = [shap_values[i,:] for i in random_indices]
-plot_shap_values(ax1, sequences_trimmed, shap_values_trimmed, x_label='Target sequence position', y_label='SHAP value \n using FastSHAP', font_size=font_size, markersize=markersize, legend=True, legend_marker_size=legend_marker_size, linewidth=linewidth)
+plot_shap_values(ax1, sequences_trimmed, shap_values_trimmed, x_label='Target sequence position', y_label='SHAP value \n using FastSHAP', font_size=font_size, markersize=markersize, legend=True, legend_marker_size=legend_marker_size, linewidth=linewidth, y_limits=(np.min(shap_values_trimmed) - 0.02, np.max(shap_values_trimmed) + 0.02))
+top_shap_values(sequences, shap_values, top_values=20, all_values_filename=f'shap_results/TIGER_fastshap_values')
+bounds = ax1.get_ylim()
 
 # Correlation between KernelSHAP
 kernelshap = np.load(f'shap_results/shap_values_{property}.npy')
@@ -107,7 +109,8 @@ for ((i, seq), sequence) in zip(df_shap.iterrows(), sequences):
 
 ax2 = fig.add_subplot(gs[0, 1])
 shap_values_trimmed = [shap_values[i,:] for i in random_indices]
-plot_shap_values(ax2, sequences_trimmed, shap_values_trimmed, x_label='Target sequence position', y_label='SHAP value \n using DeepSHAP', font_size=font_size, markersize=markersize, legend=True, legend_marker_size=legend_marker_size, linewidth=linewidth)
+plot_shap_values(ax2, sequences_trimmed, shap_values_trimmed, x_label='Target sequence position', y_label='SHAP value \n using DeepSHAP', font_size=font_size, markersize=markersize, legend=True, legend_marker_size=legend_marker_size, linewidth=linewidth, y_limits=bounds)
+top_shap_values(sequences, shap_values, top_values=20, all_values_filename=f'shap_results/TIGER_deepshap_values')
 
 
 
@@ -130,7 +133,7 @@ deepshap_time = np.load(f'shap_results/time_deepshap_{property}.npy')
 overall_deepshap_time = [deepshap_time * i for i in num_samples]
 
 ax3 = fig.add_subplot(gs[0, 2])
-plot_multiple_time_complexity(ax3, overall_fastshap_time, overall_shapzero_time, overall_deepshap_time, font_size=font_size, linewidth=linewidth, markersize=complexity_markersize, tot_samples=len(df_heldout), offset_intersection_text=70) # y_limits=bounds
+plot_multiple_time_complexity(ax3, overall_fastshap_time, overall_shapzero_time, overall_deepshap_time, font_size=font_size, linewidth=linewidth, markersize=complexity_markersize, tot_samples=len(df_heldout), offset_intersection_text=70, x_label='Number of sequences explained')
 
 # Find point of convergence for SHAP zero where SHAP zero > DeepSHAP
 num_samples = 1
@@ -146,6 +149,38 @@ while True:
 
 plt.savefig('shap_results/SUPP_tiger_altshap.pdf', transparent=True, dpi=300)
 plt.show()
+
+
+
+"""
+Interaction plots
+"""
+fig = plt.figure(figsize=(overall_fig_width*mm, 50*mm), constrained_layout=True) 
+gs = gridspec.GridSpec(1, 2, height_ratios=[1], width_ratios=[1, 1], figure=fig)
+
+# [0,0]
+ax1 = fig.add_subplot(gs[0, 0])
+shapzero_interactions = np.load(f'shap_results/shapzero_fsi_{property}.npz', allow_pickle=True)
+shapzero_interactions_sequences = shapzero_interactions['interactions_sequences']
+shapzero_sequences = shapzero_interactions['sequences']
+encoding = {0:'A', 1:'C', 2:'T', 3:'G'}
+sequences = [''.join(encoding[num] for num in row) for row in shapzero_sequences]
+plot_interactions(ax1, sequences, shapzero_interactions_sequences, top_values=80, x_label='Target sequence position', y_label='Faith-Shap interaction \n using SHAP zero', font_size=font_size, markersize=markersize, legend=True, legend_marker_size=legend_marker_size, linewidth=linewidth)
+bounds = ax1.get_ylim()
+
+
+
+# [0,1]
+ax2 = fig.add_subplot(gs[0, 1])
+x_valid = np.load(f'shap_results/fsi_{property}_samples.npy')
+sequences = [''.join(encoding[num] for num in row) for row in x_valid]
+shap_interactions = np.load(f'shap_results/fsi_{property}.pickle', allow_pickle=True)
+plot_interactions(ax2, sequences, shap_interactions, top_values=80, x_label='Target sequence position', y_label='Faith-Shap interaction \n using SHAP-IQ', y_limits=bounds, font_size=font_size, markersize=markersize, legend=True, legend_marker_size=legend_marker_size, linewidth=linewidth)
+plt.savefig('shap_results/SUPP_tiger_interactions.pdf', transparent=True, dpi=300)
+plt.show()
+
+
+
 
 # """
 # Titration

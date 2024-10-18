@@ -303,7 +303,7 @@ def plot_shap_values(ax, sequences, shap_values, colors=None, markers=None, x_la
         legend_plt.get_frame().set_linewidth(linewidth)
 
 
-def top_shap_values(sequences, shap_values, top_values=10, filename='shap_values'):
+def top_shap_values(sequences, shap_values, top_values=10, top_values_filename=None, all_values_filename=None):
     """
     Returns the top SHAP values.
 
@@ -314,6 +314,7 @@ def top_shap_values(sequences, shap_values, top_values=10, filename='shap_values
         top_values (int, optional): Number of top interactions to print.
         filename (str, optional): Name of the file to save the top interactions to as a csv.
     """
+    sequences_list = sequences.copy()
     sequences = [list(seq) for seq in sequences]
     seq_length = len(sequences[0])
     all_interactions_positive = {}
@@ -350,15 +351,24 @@ def top_shap_values(sequences, shap_values, top_values=10, filename='shap_values
         print(f"{key}: {value}")
     
     # Save to CSV:
-    data = []
-    for key, value in top_positive.items():
-        position, feature = key
-        data.append(['Positive', position, feature, value])
-    for key, value in top_negative.items():
-        position, feature = key
-        data.append(['Negative', position, feature, value])
-    df = pd.DataFrame(data, columns=['Sign', 'Position', 'Feature', 'Average value'])
-    df.to_csv(f'{filename}.csv', index=False)
+    if top_values_filename is not None:
+        data = []
+        for key, value in top_positive.items():
+            position, feature = key
+            data.append(['Positive', position, feature, value])
+        for key, value in top_negative.items():
+            position, feature = key
+            data.append(['Negative', position, feature, value])
+        df = pd.DataFrame(data, columns=['Sign', 'Position', 'Feature', 'Average value'])
+        df.to_csv(f'{top_values_filename}.csv', index=False)
+
+    # Save all SHAP values to a CSV
+    if all_values_filename is not None:
+        df = pd.DataFrame(sequences_list, columns=['Sequence'])
+        shap_columns = [f'Position {i+1}' for i in range(shap_values.shape[1])]
+        shap_df = pd.DataFrame(shap_values, columns=shap_columns)
+        final_df = pd.concat([df, shap_df], axis=1)
+        final_df.to_csv(f'{all_values_filename}.csv', index=False)
 
 
 def plot_interactions(ax, sequences, shap_interactions, top_values=None, colors=None, markers=None, x_label='Sequence position', y_label='SHAP value', y_limits=None, font_size=6, markersize=0.25, legend=True, legend_marker_size=3, linewidth=0.25):
@@ -597,7 +607,7 @@ def plot_interactions_summary(ax, sequences, shap_interactions, min_order = 2, c
         legend_plt.get_frame().set_linewidth(linewidth)
 
 
-def top_interactions(sequences, shap_interactions, top_values=10, filename='interactions', min_order=2):
+def top_interactions(sequences, shap_interactions, top_values=10, top_interactions_filename=None, all_interactions_filename=None, min_order=2):
     """
     Returns the top interactions.
 
@@ -608,6 +618,7 @@ def top_interactions(sequences, shap_interactions, top_values=10, filename='inte
         filename (str, optional): Name of the file to save the top interactions to as a csv.
         min_order (int, optional): Filters out interactions with orders less than the specified value.
     """
+    sequences_list = sequences.copy()
     sequences = [list(seq) for seq in sequences]
     seq_length = len(sequences[0])
 
@@ -651,15 +662,50 @@ def top_interactions(sequences, shap_interactions, top_values=10, filename='inte
         print(f"{key}: {value}")
 
     # Save to CSV
-    data = []
-    for key, value in top_positive.items():
-        features, positions = key
-        data.append(['Positive', ', '.join(map(str, positions)), ', '.join(features), value])
-    for key, value in top_negative.items():
-        features, positions = key
-        data.append(['Negative', ', '.join(map(str, positions)), ', '.join(features), value])
-    df = pd.DataFrame(data, columns=['Sign', 'Position', 'Feature', 'Average value'])
-    df.to_csv(f'{filename}.csv', index=False)
+    if top_interactions_filename is not None:
+        data = []
+        for key, value in top_positive.items():
+            features, positions = key
+            data.append(['Positive', ', '.join(map(str, positions)), ', '.join(features), value])
+        for key, value in top_negative.items():
+            features, positions = key
+            data.append(['Negative', ', '.join(map(str, positions)), ', '.join(features), value])
+        df = pd.DataFrame(data, columns=['Sign', 'Position', 'Feature', 'Average value'])
+        df.to_csv(f'{top_interactions_filename}.csv', index=False)
+
+    # Save all interactions to a CSV
+    if all_interactions_filename is not None:
+        chunk_size = 500 # Limit the amount of data to be saved in each column
+        def split_dict(d, chunk_size):
+            keys = list(d.keys())
+            for i in range(0, len(keys), chunk_size):
+                yield {k: d[k] for k in keys[i:i + chunk_size]}
+        # Find max order of interactions
+        max_order = max(len(key) for key in shap_interactions[0].keys())  
+        data = []
+        for shap_interaction, sequence in zip(shap_interactions, sequences_list):
+            row = [sequence]  
+            for order in range(1, max_order + 1):
+                # Extract interactions of the current order
+                shap_interactions_order = {key: value for key, value in shap_interaction.items() if len(key) == order}
+                # If the size of the dictionary exceeds the chunk_size, split it into multiple parts
+                if len(shap_interactions_order) > chunk_size:
+                    chunks = list(split_dict(shap_interactions_order, chunk_size))
+                    for chunk in chunks:
+                        row.append(chunk)
+                else:
+                    row.append(shap_interactions_order)
+            data.append(row)
+        # Dynamically create column names based on the number of chunks
+        columns = ['Sequence']
+        for order in range(1, max_order + 1):
+            if any(len({key: value for key, value in shap_interaction.items() if len(key) == order}) > chunk_size for shap_interaction in shap_interactions):
+                num_chunks = max(len(list(split_dict({key: value for key, value in shap_interaction.items() if len(key) == order}, chunk_size))) for shap_interaction in shap_interactions)
+                columns += [f'Order {order} part {i + 1}' for i in range(num_chunks)]
+            else:
+                columns.append(f'Order {order}')
+        df = pd.DataFrame(data, columns=columns)
+        df.to_csv(f'{all_interactions_filename}.csv', index=False)
 
 
 def group_by_position(data, seq_length, nucleotides):
