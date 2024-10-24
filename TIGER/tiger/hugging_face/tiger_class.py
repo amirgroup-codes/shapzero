@@ -15,7 +15,7 @@ path_to_remove = '/nethome/dtsui31/.local/lib/python3.10/site-packages'
 if path_to_remove in sys.path:
     sys.path.remove(path_to_remove)
 # import utils
-from utils2 import load_arguments
+from utils_tiger import load_arguments
 from models import build_model
 import hugging_face.tiger as hf
 from data import model_inputs

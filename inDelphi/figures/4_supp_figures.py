@@ -107,7 +107,7 @@ fastshap_inference_time = (np.load(f'shap_results/time_fastshap_inference_{cellt
 overall_fastshap_time = [fastshap_surrogate_time + fastshap_explainer_time + (fastshap_inference_time / len(df_heldout)) * i for i in num_samples]
 
 ax2 = fig.add_subplot(gs[0, 1])
-plot_time_complexity(ax2, overall_fastshap_time, overall_shapzero_time, font_size=font_size, linewidth=linewidth, markersize=complexity_markersize, tot_samples=len(df_heldout) + len(df_extra) + len(df_extra_2), offset_intersection_text=70, legend_loc='upper right', x_label='Number of sequences explained') 
+plot_time_complexity(ax2, overall_fastshap_time, overall_shapzero_time, font_size=font_size, linewidth=linewidth, markersize=complexity_markersize, tot_samples=len(df_heldout) + len(df_extra) + len(df_extra_2), offset_intersection_text=70, legend_loc='upper right', x_label='Number of sequences explained', first_shap_method='FastSHAP') 
 
 
 plt.savefig('shap_results/SUPP_inDelphi_altshap.pdf', transparent=True, dpi=300)

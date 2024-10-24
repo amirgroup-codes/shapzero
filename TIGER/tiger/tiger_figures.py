@@ -1,5 +1,5 @@
 import os
-import utils
+import utils_tiger
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -25,7 +25,7 @@ def replicate_performance(data):
         })])
 
     # compute metrics
-    performance = utils.measure_performance(predictions,
+    performance = utils_tiger.measure_performance(predictions,
                                             index=pd.Index(data=['Replicates'], name='Model'),
                                             silence=True)
 
@@ -105,9 +105,9 @@ def others_pm_performance(test_set):
 
     # concatenate performances
     performance = pd.concat([
-        utils.measure_performance(pred_wessels, index_wessels, silence=True),
-        utils.measure_performance(pred_cheng, index_cheng, silence=True),
-        utils.measure_performance(pred_wei, index_wei, silence=True),
+        utils_tiger.measure_performance(pred_wessels, index_wessels, silence=True),
+        utils_tiger.measure_performance(pred_cheng, index_cheng, silence=True),
+        utils_tiger.measure_performance(pred_wei, index_wei, silence=True),
     ])
 
     # concatenate predictions
@@ -128,7 +128,7 @@ def on_target_performance(fig_path: str, fig_ext: str, holdout: str):
         dir_combined = os.path.join('predictions', 'off-target', 'no_indels', holdout)
         pred_combined = pd.read_pickle(os.path.join(dir_combined, 'predictions.pkl'))
         pred_combined = pred_combined[pred_combined.guide_type == 'PM']
-        perf_combined = utils.measure_performance(pred_combined, silence=True)
+        perf_combined = utils_tiger.measure_performance(pred_combined, silence=True)
         pred_combined['Model'] = perf_combined['Model'] = 'Ours (combined)'
 
         # on-target performance
@@ -180,7 +180,7 @@ def off_target_performance(fig_path: str, fig_ext: str, holdout: str):
 
     # guide type performance
     predictions = pd.concat([pred_combined, pred_off_target]).set_index('Model')
-    performance = utils.measure_guide_type_performance(predictions, reference='Ours (combined)')
+    performance = utils_tiger.measure_guide_type_performance(predictions, reference='Ours (combined)')
 
     # plot performance
     title = 'Off-target Performance: ' + holdout
@@ -201,7 +201,7 @@ def performance_by_guide_type(fig_path: str, fig_ext: str, holdout: str):
         return None
 
     # guide type performance
-    performance = utils.measure_guide_type_performance(predictions.set_index('Model'))
+    performance = utils_tiger.measure_guide_type_performance(predictions.set_index('Model'))
 
     # guide order
     performance.rename(columns={'guide_type': 'Guide type'}, inplace=True)
@@ -245,12 +245,12 @@ def delta_pearson_performance(fig_path: str, fig_ext: str, holdout: str):
         return None
 
     # guide type performance
-    performance = utils.measure_guide_type_performance(predictions)
+    performance = utils_tiger.measure_guide_type_performance(predictions)
 
     # guide-type delta performance
     predictions['observed_lfc'] -= predictions['observed_pm_lfc']
     predictions['predicted_lfc'] -= predictions['predicted_pm_lfc']
-    delta_performance = utils.measure_guide_type_performance(predictions[predictions.guide_type != 'PM'])
+    delta_performance = utils_tiger.measure_guide_type_performance(predictions[predictions.guide_type != 'PM'])
 
     # plot absolute vs delta performance
     performance['Prediction'] = 'absolute'

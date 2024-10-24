@@ -5,19 +5,10 @@ import pickle
 import numpy as np
 import pandas as pd
 
-"""
-Fix for server
-# export CUDNN_PATH="/home/amirali/dtsui/anaconda3/envs/tiger/lib/python3.10/site-packages/nvidia/cudnn"
-# export LD_LIBRARY_PATH="$CUDNN_PATH/lib":"/usr/local/cuda/lib64"
-# # ...
-# export PATH="$PATH":"/usr/local/cuda/bin"
-# export TF_CPP_MIN_LOG_LEVEL="2"
-"""
-import sys
-# print(sys.path)
-path_to_remove = '/nethome/dtsui31/.local/lib/python3.10/site-packages'
-if path_to_remove in sys.path:
-    sys.path.remove(path_to_remove)
+# import sys
+# path_to_remove = '/nethome/dtsui31/.local/lib/python3.10/site-packages'
+# if path_to_remove in sys.path:
+#     sys.path.remove(path_to_remove)
 import tensorflow as tf
 from Bio import SeqIO
 

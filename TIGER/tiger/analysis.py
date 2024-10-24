@@ -1,5 +1,5 @@
 import os
-import utils
+import utils_tiger
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
@@ -8,7 +8,7 @@ from data import label_and_filter_data, load_data, sequence_complement, SCALAR_F
 from matplotlib import pyplot as plt
 from scipy.stats import pearsonr
 from sklearn.metrics import confusion_matrix
-from utils import titration_ratio
+from utils_tiger import titration_ratio
 
 NUCLEOTIDES = ['A', 'C', 'T', 'G']
 METRICS = ['Pearson', 'Spearman', 'AUROC', 'AUPRC']
@@ -26,7 +26,7 @@ def plot_performance(performance: pd.DataFrame, predictions: pd.DataFrame, hue: 
     predictions = predictions.loc[predictions.index.get_level_values(hue) != 'Replicates', :]
 
     # check for statistically significant differences
-    performance = utils.statistical_tests(null, performance, predictions)
+    performance = utils_tiger.statistical_tests(null, performance, predictions)
 
     # initialize figure
     fig, ax = plt.subplots(ncols=3, figsize=(15, 5))
@@ -287,7 +287,7 @@ def plot_sequence_context_performances(dataset: str, data_sub_dir: str, holdout:
 
         # run statistical tests
         reference_model = performance_config['Pearson'].idxmax()
-        performance_config = utils.statistical_tests(reference_model, performance_config, predictions_config)
+        performance_config = utils_tiger.statistical_tests(reference_model, performance_config, predictions_config)
 
         # loop over the metrics
         for j, metric in enumerate(METRICS):
@@ -715,7 +715,7 @@ def normalization_performance(dataset: str, data_sub_dir: str, holdout: str):
     performances = pd.DataFrame()
     for index in predictions.index.unique():
         pm_sm = predictions.loc[predictions.guide_type.isin({'PM', 'SM'})].loc[index].copy()
-        performance = utils.measure_performance(pm_sm, index=[index], silence=True)
+        performance = utils_tiger.measure_performance(pm_sm, index=[index], silence=True)
         df = titration_ratio(pm_sm, num_top_guides=10, correction=False)
         bins = np.arange(0.2, 1.0, .2)
         mtx = confusion_matrix(np.digitize(df['Observed ratio'], bins),
@@ -736,9 +736,9 @@ if __name__ == '__main__':
     plt.rcParams['svg.fonttype'] = 'none'
 
     # parser arguments
-    parser = utils.common_parser_arguments()
-    args = utils.parse_common_arguments(parser)
-    data_sub_directory = utils.data_directory(args.pm_only, args.indels, args.seq_only)
+    parser = utils_tiger.common_parser_arguments()
+    args = utils_tiger.parse_common_arguments(parser)
+    data_sub_directory = utils_tiger.data_directory(args.pm_only, args.indels, args.seq_only)
 
     # generate and save plots
     plot_label_and_filter_results(args.dataset, data_sub_directory, args.holdout, args.fig_ext)

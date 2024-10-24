@@ -8,11 +8,17 @@ sys.path.append('..')
 sys.path.append('../..')
 sys.path.append('../tiger')
 sys.path.append('../tiger/hugging_face/')
+import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(script_dir))
+path_to_remove = '/nethome/dtsui31/.local/lib/python3.10/site-packages'
+if path_to_remove in sys.path:
+    sys.path.remove(path_to_remove)
 from gen.utils import run_linear_model, run_pairwise_model, compute_fourier_output
 import pickle
 from tiger_trainer import score_tiger, return_scoring, measure_performance
 from tiger_class import calibrate_predictions, score_predictions
-from utils import measure_performance # From the tiger directory
+from utils_tiger import measure_performance # From the tiger directory
 encoding = {0:'A', 1:'C', 2:'T', 3:'G'}
 sat_quant_active = 0.05
 sat_quant_inactive = 0.95
@@ -27,13 +33,13 @@ tiger_dir = '../tiger/hugging_face/'
 
 
 """
-on_target and titration
+Compute scores
 """
 q = 4
 n = 26
 b = 7
-properties = ['on_target', 'titration']
-file_path = ['on_target', 'titration']
+properties = ['on_target']
+file_path = ['on_target']
 
 # SHAP Zero
 df_on_target = pd.DataFrame()
@@ -146,7 +152,7 @@ for property in properties:
     else:
         df_titration['Model: {}'.format(property)] = y_pred
     df_corrs['Model: {}'.format(property)] = scores
-    df_corrs['Model: {}'.format(property)] = errors
+    df_corrs['Model error: {}'.format(property)] = errors
 
 
 
@@ -206,5 +212,5 @@ for property in properties:
     df_corrs['Pairwise error: {}'.format(property)] = errors
 
 df_on_target.to_csv('correlation_results/model_scores_on_target.csv'.format(property))
-df_titration.to_csv('correlation_results/model_scores_titration.csv'.format(property))
+# df_titration.to_csv('correlation_results/model_scores_titration.csv'.format(property))
 df_corrs.to_csv('correlation_results/model_results.csv')

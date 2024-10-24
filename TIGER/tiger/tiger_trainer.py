@@ -1,7 +1,13 @@
 import os
-import utils
+import utils_tiger
 import numpy as np
 import pandas as pd
+import sys
+script_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(script_dir))
+path_to_remove = '/nethome/dtsui31/.local/lib/python3.10/site-packages'
+if path_to_remove in sys.path:
+    sys.path.remove(path_to_remove)
 import tensorflow as tf
 import hugging_face.tiger as hf
 from data import load_data, label_and_filter_data, training_validation_split_targets, model_inputs
@@ -10,7 +16,7 @@ from models import build_model, train_model, test_model
 from normalization import get_normalization_object
 from sklearn.linear_model import LogisticRegression
 from tiger_figures import titration_confusion_matrix
-from utils import measure_performance, titration_ratio
+from utils_tiger import measure_performance, titration_ratio
 
 # web-tool normalization settings
 NORMALIZATION = 'UnitInterval'
@@ -109,13 +115,13 @@ def return_scoring(df: pd.DataFrame, params: pd.DataFrame):
 if __name__ == '__main__':
 
     # script arguments
-    parser = utils.common_parser_arguments()
+    parser = utils_tiger.common_parser_arguments()
     parser.add_argument('--sat_quant_active', type=float, default=0.05, help='sigmoid(LFC) := q for quantile(LFC, q)')
     parser.add_argument('--sat_quant_inactive', type=float, default=0.95, help='sigmoid(LFC) := q for quantile(LFC, q)')
     parser.add_argument('--random_seed', type=int, default=12345, help='random number seed')
     parser.add_argument('--retrain', action='store_true', default=False, help='retrain TIGER')
     parser.add_argument('--training_ratio', type=float, default=0.9, help='ratio of data for training')
-    args = utils.parse_common_arguments(parser)
+    args = utils_tiger.parse_common_arguments(parser)
     assert 0 < args.training_ratio < 1
 
     # random seed
