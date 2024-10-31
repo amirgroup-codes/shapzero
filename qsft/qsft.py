@@ -312,44 +312,6 @@ class QSFT(Signal):
                 "max_hamming_weight": max_hamming_weight
             }
 
-
-            # """Least Squares on coefficients"""
-            # start_time = time.time()
-            # samples = np.zeros((1, signal.n))
-            # y = np.zeros(1)
-            # for i in range(1):#en(signal.Ms)):
-            #     for j in range(1):#len(signal.Ds[i])):
-            #         if signal.type != 'None':
-            #             sample_file = Path(f"{signal.foldername}/samples/{signal.type}/M{i}_D{j}.pickle")
-            #         else: 
-            #             sample_file = Path(f"{signal.foldername}/samples/M{i}_D{j}.pickle")
-            #         y_ij = load_data(sample_file).ravel()
-            #         samples_ij = signal._get_qsft_query_indices(signal.Ms[i], signal.Ds[i][j])
-            #         samples_ij = np.concatenate(samples_ij)
-            #         samples_ij = np.array(dec_to_qary_vec(samples_ij, signal.q, signal.n)).T
-            #         samples = np.concatenate((samples, samples_ij), axis=0)
-            #         y = np.concatenate([y, y_ij])
-
-            # # Create input matrix A, where rows are each sample of m, and columns are each input of k
-            # y = np.concatenate((np.real(y), np.zeros(len(y))))
-            # freq = (2 * cmath.pi * 1j / signal.q) * np.array(list(gwht.keys())).T  
-            # A = np.exp(samples @ freq)
-            # A_ext = np.concatenate((np.concatenate((np.real(A), -np.imag(A)), axis=1), np.concatenate((np.imag(A), np.real(A)), axis=1)))
-            # end_time_matrix = time.time()
-            # print('Time to create matrix A for Ridge regression: ', end_time_matrix - start_time)
-
-            # # Ridge regression
-            # print('Running Ridge regression:')
-            # ridge = Ridge(alpha=1e-3, tol=1e-8)
-            # ridge.fit(A_ext, y)
-            # gwht_ridge = ridge.coef_[0:len(gwht)] + 1j*ridge.coef_[len(gwht):(2*len(gwht))]
-            # gwht_ridge_dict = {key: value for key, value in zip(gwht, gwht_ridge)}
-            # result.update({
-            #     "gwht": gwht_ridge_dict,
-            # })
-            # end_time_regression = time.time()
-            # print('Time to run Ridge regression: ', end_time_regression - end_time_matrix)
-
             return result
         
     def get_alpha(n):

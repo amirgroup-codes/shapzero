@@ -13,7 +13,6 @@ class shapzero:
         self.q = q
         self.n = n
 
-
     def degree(self, index):
         count = 0
         coordinates = []
@@ -27,43 +26,52 @@ class shapzero:
 
 
     def get_permutations(self, coordinates):
+        """
+        Get all possible combinations of coordinates up to length of input coordinates.
+
+        Parameters:
+            coordinates (list): List of coordinate indices to generate combinations from.
+
+        Returns:
+            list: List of tuples containing all possible combinations of coordinates.
+        """
+        
         result = []
         for r in range(1, len(coordinates) + 1):
             perms = combinations(coordinates, r)
             result.extend(set(perms))
         return result
-    # # Example 
-    # coordinates = [1, 2, 3]
-    # permutations_list = get_permutations(coordinates)
-    # for perm in permutations_list:
-    #     print(perm)
-    # (1,)
-    # (2,)
-    # (3,)
-    # (2, 3)
-    # (1, 2)
-    # (1, 3)
-    # (1, 2, 3)
-
 
     def get_permutations_of_length_n(self, tuple_elements, q=None):
+        """
+        Get all possible q-ary permutations of a given tuple of elements.
+
+        Parameters:
+            tuple_elements (tuple): Tuple of coordinate indices to generate permutations for.
+            q (int, optional): Base of q-ary system. If not provided, uses self.q.
+
+        Returns:
+            list: List of tuples containing all possible q-ary permutations of the input coordinates.
+                 Each element in the permutations is in range [1, q-1].
+        """
         if q is not None:
             perms = list(product(range(1, q), repeat=len(tuple_elements)))
         else:
             perms = list(product(range(1, self.q), repeat=len(tuple_elements)))
         return perms
-    # # Example
-    # tuple_elements = (1,)
-    # q = 4
-    # permutations_list = get_permutations_of_length_n(tuple_elements, q)
-    # for perm in permutations_list:
-    #     print(perm)
-    # (1,)
-    # (2,)
-    # (3,)
-
 
     def get_permutations_of_lower_orders(self, coordinates, order):
+        """
+        Get all possible combinations of coordinates up to a specified order.
+
+        Parameters:
+            coordinates (list): List of coordinate indices to generate combinations from.
+            order (int): Maximum order of combinations to generate.
+
+        Returns:
+            list: List of tuples containing all possible combinations of coordinates up to the specified order.
+                 Each tuple represents a subset of the input coordinates.
+        """
         result = []
         for r in range(1, order):
             perms = combinations(coordinates, r)
@@ -72,6 +80,17 @@ class shapzero:
 
 
     def get_permutations_of_order(self, coordinates, order):
+        """
+        Get all possible combinations of coordinates of a specific order.
+
+        Parameters:
+            coordinates (list): List of coordinate indices to generate combinations from.
+            order (int): The exact order of combinations to generate.
+
+        Returns:
+            list: List of tuples containing all possible combinations of coordinates of the specified order.
+                 Each tuple represents a subset of the input coordinates of length equal to order.
+        """
         result = []
         perms = combinations(coordinates, order)
         result.extend(set(perms))
@@ -79,6 +98,21 @@ class shapzero:
 
 
     def run_mobius_transform(self):
+        """
+        Run the Mobius transform on the q-ary Fourier transform.
+        
+        The Mobius transform converts the Fourier coefficients into localized interaction effects.
+        It iteratively builds up interaction terms by combining lower-order terms.
+        
+        The transform is stored in self.mobius_tf, which maps tuples of q-ary indices to complex values.
+        The keys are tuples of length n (number of features) where non-zero elements indicate interactions.
+        
+        Returns:
+            None
+        
+        Side Effects:
+            Sets self.mobius_tf with the computed Mobius transform
+        """
         omega = cmath.exp(2 * cmath.pi * 1j / self.q)
         data = self.transform
 
@@ -125,10 +159,20 @@ class shapzero:
 
     def localize_sample(self, sample):
         """
-        Given a qsft transform, run the Mobius transform such that the transform is localized to the sample
-        Outputs:
-            localized_mobius_tf: localized mobius transform, where the all 0's vector represents the sample without mutations. The other entries represent arbitrary numbers that can be converted back to the original encodings
-            localized_mobius_tf_encoding: localized mobius transform, the key indices are expressed in terms of the original q-ary encodings
+        Given a qsft transform, run the Mobius transform such that the transform is localized to the sample.
+        Parameters:
+            sample: numpy array
+                The sample to localize the transform around. Each element should be in [0, q-1].
+        
+        Returns:
+            localized_mobius_tf: dict
+                The localized Mobius transform, where the all-zeros vector represents the sample without mutations. The other entries represent 
+                arbitrary numbers that can be converted back to the original encodings.
+                Keys are tuples representing positions, values are the transform coefficients.
+            
+            localized_mobius_tf_encoding: dict 
+                The localized Mobius transform with keys expressed in terms of the original q-ary encodings.
+                Keys are tuples representing positions, values are the transform coefficients.
         """
         omega = np.exp(2j * np.pi / self.q)
         w_d_k = omega ** (sample @ np.array(list(self.transform.keys())).T)    
@@ -609,103 +653,105 @@ def plot_interactions_summary(ax, sequences, shap_interactions, min_order = 2, c
 
 def top_interactions(sequences, shap_interactions, top_values=10, top_interactions_filename=None, all_interactions_filename=None, min_order=2):
     """
-    Returns the top interactions.
+    Returns and optionally saves the top SHAP interactions.
 
     Parameters:
         sequences (list): List of sequences as strings.
-        shap_interactions (list of dict): SHAP interaction values for each sample. Keys are a tuple of positions, values are the associated SHAP interaction values.
+        shap_interactions (list of dict): SHAP interaction values for each sample.
         top_values (int, optional): Number of top interactions to print.
-        filename (str, optional): Name of the file to save the top interactions to as a csv.
-        min_order (int, optional): Filters out interactions with orders less than the specified value.
+        top_interactions_filename (str, optional): Filename to save top interactions as CSV.
+        all_interactions_filename (str, optional): Filename to save all interactions as CSV.
+        min_order (int, optional): Minimum interaction order to consider.
     """
-    sequences_list = sequences.copy()
     sequences = [list(seq) for seq in sequences]
-    seq_length = len(sequences[0])
+    
+    # Track positive and negative interactions
+    pos_interactions = {}
+    pos_counts = {}
+    neg_interactions = {}
+    neg_counts = {}
 
-    all_interactions_positive = {}
-    all_interactions_positive_count = {}
-    all_interactions_negative = {}
-    all_interactions_negative_count = {}
-    for (shap_interaction, sequence) in zip(shap_interactions, sequences):
-        shap_interactions_min_order = {key: value for key, value in shap_interaction.items() if sum(1 for element in key if element != 0) >= min_order}
-        sequence_i = list(sequence)
+    # Aggregate interactions across sequences
+    for seq, interactions in zip(sequences, shap_interactions):
+        filtered_interactions = {k: v for k, v in interactions.items() 
+                              if sum(1 for x in k if x != 0) >= min_order}
         
-        for key, value in shap_interactions_min_order.items():
-            nucleotides = [sequence_i[pos] for pos in key]
-            nuc_pos = tuple((tuple(nucleotides), key))
+        for positions, value in filtered_interactions.items():
+            nucleotides = tuple(seq[pos] for pos in positions)
+            key = (nucleotides, positions)
+            
             if value > 0:
-                all_interactions_positive[nuc_pos] = all_interactions_positive.get(nuc_pos, 0) + value
-                all_interactions_positive_count[nuc_pos] = all_interactions_positive_count.get(nuc_pos, 0) + 1
+                pos_interactions[key] = pos_interactions.get(key, 0) + value
+                pos_counts[key] = pos_counts.get(key, 0) + 1
             elif value < 0:
-                all_interactions_negative[nuc_pos] = all_interactions_negative.get(nuc_pos, 0) + value
-                all_interactions_negative_count[nuc_pos] = all_interactions_negative_count.get(nuc_pos, 0) + 1
+                neg_interactions[key] = neg_interactions.get(key, 0) + value 
+                neg_counts[key] = neg_counts.get(key, 0) + 1
 
+    # Calculate averages
+    avg_pos = {k: v / pos_counts[k] for k, v in pos_interactions.items()}
+    avg_neg = {k: v / neg_counts[k] for k, v in neg_interactions.items()}
 
-    interaction_values_average_positive = {}
-    interaction_values_average_negative = {}
-    for key, value in all_interactions_positive.items():
-        interaction_values_average_positive[key] = value / all_interactions_positive_count[key]
-    for key, value in all_interactions_negative.items():
-        interaction_values_average_negative[key] = value / all_interactions_negative_count[key]
+    # Get top interactions
+    top_pos = dict(sorted(avg_pos.items(), key=lambda x: abs(x[1]), reverse=True)[:top_values])
+    top_neg = dict(sorted(avg_neg.items(), key=lambda x: abs(x[1]), reverse=True)[:top_values])
 
-
-    interaction_values_average_positive = dict(sorted(interaction_values_average_positive.items(), key=lambda item: np.abs(item[1]), reverse=True))
-    interaction_values_average_negative = dict(sorted(interaction_values_average_negative.items(), key=lambda item: np.abs(item[1]), reverse=True))
-    top_positive = dict(list(interaction_values_average_positive.items())[:top_values])
-    top_negative = dict(list(interaction_values_average_negative.items())[:top_values])
-
-    print(f"Top positive interactions:")
-    for key, value in top_positive.items():
+    # Print results
+    print("Top positive interactions:")
+    for key, value in top_pos.items():
         print(f"{key}: {value}")
-    print(f"Top negative interactions:")
-    for key, value in top_negative.items():
+    print("\nTop negative interactions:")
+    for key, value in top_neg.items():
         print(f"{key}: {value}")
 
-    # Save to CSV
-    if top_interactions_filename is not None:
+    # Save top interactions if filename provided
+    if top_interactions_filename:
         data = []
-        for key, value in top_positive.items():
-            features, positions = key
-            data.append(['Positive', ', '.join(map(str, positions)), ', '.join(features), value])
-        for key, value in top_negative.items():
-            features, positions = key
-            data.append(['Negative', ', '.join(map(str, positions)), ', '.join(features), value])
-        df = pd.DataFrame(data, columns=['Sign', 'Position', 'Feature', 'Average value'])
-        df.to_csv(f'{top_interactions_filename}.csv', index=False)
+        for sign, interactions in [("Positive", top_pos), ("Negative", top_neg)]:
+            for (features, positions), value in interactions.items():
+                data.append([
+                    sign,
+                    ', '.join(map(str, positions)),
+                    ', '.join(features),
+                    value
+                ])
+        pd.DataFrame(data, columns=['Sign', 'Position', 'Feature', 'Average value'])\
+          .to_csv(f'{top_interactions_filename}.csv', index=False)
 
-    # Save all interactions to a CSV
-    if all_interactions_filename is not None:
-        chunk_size = 500 # Limit the amount of data to be saved in each column
-        def split_dict(d, chunk_size):
-            keys = list(d.keys())
-            for i in range(0, len(keys), chunk_size):
-                yield {k: d[k] for k in keys[i:i + chunk_size]}
-        # Find max order of interactions
-        max_order = max(len(key) for key in shap_interactions[0].keys())  
-        data = []
-        for shap_interaction, sequence in zip(shap_interactions, sequences_list):
-            row = [sequence]  
-            for order in range(1, max_order + 1):
-                # Extract interactions of the current order
-                shap_interactions_order = {key: value for key, value in shap_interaction.items() if len(key) == order}
-                # If the size of the dictionary exceeds the chunk_size, split it into multiple parts
-                if len(shap_interactions_order) > chunk_size:
-                    chunks = list(split_dict(shap_interactions_order, chunk_size))
-                    for chunk in chunks:
-                        row.append(chunk)
-                else:
-                    row.append(shap_interactions_order)
-            data.append(row)
-        # Dynamically create column names based on the number of chunks
-        columns = ['Sequence']
+    # Save all interactions if filename provided
+    if all_interactions_filename:
+        _save_all_interactions(sequences, shap_interactions, all_interactions_filename)
+
+def _save_all_interactions(sequences, shap_interactions, filename, chunk_size=500):
+    """Helper function to save all interactions to CSV"""
+    max_order = max(len(key) for key in shap_interactions[0].keys())
+    
+    def split_dict(d):
+        keys = list(d.keys())
+        return [{k: d[k] for k in keys[i:i + chunk_size]}
+                for i in range(0, len(keys), chunk_size)]
+
+    data = []
+    for sequence, interactions in zip(sequences, shap_interactions):
+        row = [sequence]
         for order in range(1, max_order + 1):
-            if any(len({key: value for key, value in shap_interaction.items() if len(key) == order}) > chunk_size for shap_interaction in shap_interactions):
-                num_chunks = max(len(list(split_dict({key: value for key, value in shap_interaction.items() if len(key) == order}, chunk_size))) for shap_interaction in shap_interactions)
-                columns += [f'Order {order} part {i + 1}' for i in range(num_chunks)]
+            order_interactions = {k: v for k, v in interactions.items() if len(k) == order}
+            if len(order_interactions) > chunk_size:
+                row.extend(split_dict(order_interactions))
             else:
-                columns.append(f'Order {order}')
-        df = pd.DataFrame(data, columns=columns)
-        df.to_csv(f'{all_interactions_filename}.csv', index=False)
+                row.append(order_interactions)
+        data.append(row)
+
+    # Create column names
+    columns = ['Sequence']
+    for order in range(1, max_order + 1):
+        max_chunks = max(len(split_dict({k: v for k, v in inter.items() if len(k) == order}))
+                        for inter in shap_interactions)
+        if max_chunks > 1:
+            columns.extend(f'Order {order} part {i + 1}' for i in range(max_chunks))
+        else:
+            columns.append(f'Order {order}')
+
+    pd.DataFrame(data, columns=columns).to_csv(filename, index=False)
 
 
 def group_by_position(data, seq_length, nucleotides):
@@ -763,23 +809,3 @@ def correlation_interactions(shapzero, shapzero_sequences, interactions, interac
     print(f'Interactions pearson correlation: {pearson_corr:.2f}')
     print('Fraction of interactions shared with respect to SHAP zero: ', len(shapzero) / all_shapzero_interactions)
     print('Fraction of interactions shared with respect to SHAP-IQ: ', len(shapzero) / all_interactions)
-
-    # fig, ax = plt.subplots(figsize=(7, 7))
-    # scatter = plt.scatter(shap_values_plotting, mobius_values_plotting, marker='o', color='#3c5488', label='Empirical samples', s=20)  
-
-    # # Fit a linear regression line
-    # coefficients = np.polyfit(shap_values_plotting, mobius_values_plotting, 1)
-    # poly_fit = np.poly1d(coefficients)
-    # line_of_best_fit = poly_fit(shap_values_plotting)
-    # plt.plot(shap_values_plotting, line_of_best_fit, color='#9b9ca0', linewidth=0.5, label='Line of Best Fit')
-
-    # # Set labels and fonts
-    # ax.set_ylabel('Perfect match F-SHAP values', fontsize=font_size)
-    # ax.set_xlabel(f'Perfect match SHAP-IQ FSI values', fontsize=font_size)
-    # ax.tick_params(axis='both', labelsize=font_size, width=0.5)
-    # ax.spines['top'].set_visible(False)
-    # ax.spines['right'].set_visible(False)
-
-    # legend_label = f'Pearson $r$ = {pearson_corr:.2f}'
-    # legend = plt.legend([scatter], [legend_label], fontsize=font_size, loc='lower right')
-    # legend.get_frame().set_linewidth(0.5)

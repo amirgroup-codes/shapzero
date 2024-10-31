@@ -71,8 +71,6 @@ if __name__ == "__main__":
     cut = int(len(nucleotide_padding) / 2)
     n_2 = int(n/2)
 
-
-
     """
     Initialize files
     """
@@ -98,8 +96,6 @@ if __name__ == "__main__":
     for file in file_path:
         if not os.path.exists(os.path.join(celltype_folder_path_test, file)):
             os.makedirs(os.path.join(celltype_folder_path_test, file))
-
-
 
     """
     Compute samples needed for F-SHAP
@@ -133,7 +129,6 @@ if __name__ == "__main__":
                     save_data(sample, sample_file)
                     save_data(sample, sample_file_mean)
                         
-                    
 
     # Save the empirical mean separately
     folder_path = os.path.join(current_directory, "q{}_n{}_b{}".format(q, n, b))
@@ -159,8 +154,6 @@ if __name__ == "__main__":
                 samples = load_data(sample_file)
                 samples_zeromean = samples - all_samples_mean
                 save_data(samples_zeromean, sample_file_zeromean)
-
-
 
     """
     Testing samples to compute NMSE and R^2

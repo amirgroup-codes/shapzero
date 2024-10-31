@@ -3,8 +3,15 @@ import re
 import pickle
 import zlib
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.pipeline import Pipeline
+from tqdm import tqdm
+from sklearn.linear_model import Ridge
+from scipy.stats import pearsonr
+from scipy.stats import pearsonr, spearmanr
 
 def load_data(filename):
     with open(filename, 'rb') as f:
@@ -88,12 +95,6 @@ def summarize_results(locations, gwht, q, n, b, noise_sd, n_used, r2_value, nmse
     results_file = folder / file_path
     write_results_to_file(results_file, q, n, b, noise_sd, n_used, r2_value, nmse, avg_hamming_weight, max_hamming_weight)
 
-
-import numpy as np
-from tqdm import tqdm
-from sklearn.linear_model import Ridge
-from scipy.stats import pearsonr
-
 def run_linear_model(sequences_train, y_train, sequences_test, y_test):
     """
     Runs a linear model, feeding in a list of sequences and their corresponding values
@@ -136,9 +137,6 @@ def run_linear_model(sequences_train, y_train, sequences_test, y_test):
 
     return corr, y_pred
 
-
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.pipeline import Pipeline
 degree = 2 
 
 def run_pairwise_model(sequences_train, y_train, sequences_test, y_test):
@@ -211,10 +209,6 @@ def plot_scatter_with_best_fit(ax, y, y_hat_model, pearson_corr, x_label='Ground
     legend = ax.legend([ax.collections[0]], [legend_label], loc='lower right', markerscale=legend_marker_size, fontsize=font_size)
     legend.get_frame().set_linewidth(linewidth)
 
-
-import pandas as pd
-from scipy.stats import pearsonr, spearmanr
-
 def summary_stats(y, y_hat):
     """
     Generates pearson and spearman for two numpy arrays. Returns a dataframe with statistics.
@@ -234,6 +228,24 @@ def summary_stats(y, y_hat):
 def plot_time_complexity(ax, overall_shap_time, overall_mobius_time, font_size=6, x_label='Number of samples', y_label='Total runtime (seconds)', first_shap_method='KernelSHAP', first_shap_color='#00a087', second_shap_method='SHAP zero', second_shap_color='#3c5488', y_limits=None, legend=True, linewidth=0.2, tot_samples=None, markersize=0.25, legend_loc='upper left', offset_intersection_text=100):
     """
     Plot SHAP compute time per sample
+    Parameters:
+        ax (matplotlib.axes.Axes): The axes object to plot on.
+        overall_shap_time (list): List of cumulative runtimes for first SHAP method.
+        overall_mobius_time (list): List of cumulative runtimes for second SHAP method.
+        font_size (int, optional): Font size for labels and text. Defaults to 6.
+        x_label (str, optional): Label for x-axis. Defaults to 'Number of samples'.
+        y_label (str, optional): Label for y-axis. Defaults to 'Total runtime (seconds)'.
+        first_shap_method (str, optional): Name of first SHAP method. Defaults to 'KernelSHAP'.
+        first_shap_color (str, optional): Color for first SHAP method line. Defaults to '#00a087'.
+        second_shap_method (str, optional): Name of second SHAP method. Defaults to 'SHAP zero'.
+        second_shap_color (str, optional): Color for second SHAP method line. Defaults to '#3c5488'.
+        y_limits (tuple, optional): Limits for y-axis. Defaults to None.
+        legend (bool, optional): Whether to show legend. Defaults to True.
+        linewidth (float, optional): Width of plotted lines. Defaults to 0.2.
+        tot_samples (int, optional): Number of samples to mark with x. Defaults to None.
+        markersize (float, optional): Size of markers. Defaults to 0.25.
+        legend_loc (str, optional): Location of legend. Defaults to 'upper left'.
+        offset_intersection_text (int, optional): Offset for intersection annotation. Defaults to 100.
     """
     num_samples = range(1, len(overall_mobius_time) + 1)
     # Find where shap methods intersect
@@ -332,6 +344,13 @@ def plot_multiple_time_complexity(ax, overall_shap_time, overall_mobius_time, ov
 def compute_fourier_output(seqs_qary, qsft_transform, q):
     """
     Given a list of q-ary encoded sequence and the qsft transform, compute the predicted Fourier output.
+    Parameters:
+        seqs_qary (np.ndarray): Array of q-ary encoded sequences
+        qsft_transform (dict): Dictionary mapping frequency vectors to Fourier coefficients
+        q (int): Size of alphabet (e.g. 4 for DNA/RNA sequences)
+        
+    Returns:
+        y_hat (np.ndarray): Predicted outputs for each sequence using the Fourier transform
     """
     batch_size = 10000
     beta_keys = list(qsft_transform.keys())
