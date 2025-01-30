@@ -19,7 +19,7 @@ conda env create --name inDelphi -f inDelphi.yml
 ## Step 1: Recover the Fourier coefficients from the model
 
 Frequent error with *q*-SFT: if you get the following message
-> ImportError: cannot import name 'decode_jit' from 'galois._codes._reed_solomon' (/usr/scratch/dtsui/.conda/pkgs/tiger/lib/python3.10/site-packages/galois/_codes/_reed_solomon.py)
+> ImportError: cannot import name 'decode_jit' from 'galois._codes._reed_solomon' (/.conda/pkgs/tiger/lib/python3.10/site-packages/galois/_codes/_reed_solomon.py)
 
 Be sure to install this specific version of galois:
 ```console

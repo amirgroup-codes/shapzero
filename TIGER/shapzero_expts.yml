@@ -166,4 +166,4 @@ dependencies:
       - wheel==0.43.0
       - wrapt==1.14.1
       - zipp==3.17.0
-prefix: /usr/scratch/dtsui/.conda/pkgs/shapzero_expts
+prefix: /.conda/pkgs/shapzero_expts

@@ -15,7 +15,7 @@ from gen.utils import plot_multiple_time_complexity
 
 # Import font
 import matplotlib.font_manager as fm
-font_path = '/usr/scratch/dtsui/Helvetica.ttf'
+font_path = '../../gen/Helvetica.ttf'
 font_prop = fm.FontProperties(fname=font_path)
 fm.fontManager.addfont(font_path)
 font_name = font_prop.get_name()

@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
 np.random.seed(42)
-from scipy.stats import pearsonr
 import random
 random.seed(42)
 
@@ -15,7 +14,7 @@ from gen.utils import  plot_time_complexity
 
 # Import font
 import matplotlib.font_manager as fm
-font_path = '/usr/scratch/dtsui/Helvetica.ttf'
+font_path = '../../gen/Helvetica.ttf'
 font_prop = fm.FontProperties(fname=font_path)
 fm.fontManager.addfont(font_path)
 font_name = font_prop.get_name()

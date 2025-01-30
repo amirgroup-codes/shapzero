@@ -15,7 +15,7 @@ from gen.utils import  plot_time_complexity
 
 # Import font
 import matplotlib.font_manager as fm
-font_path = '/usr/scratch/dtsui/Helvetica.ttf'
+font_path = '../../gen/Helvetica.ttf'
 font_prop = fm.FontProperties(fname=font_path)
 fm.fontManager.addfont(font_path)
 font_name = font_prop.get_name()
@@ -96,7 +96,7 @@ correlation_shap_values(kernelshap, shap_values)
 # SHAP zero
 num_samples = range(1, 500)
 shapzero_sample_time = np.load(f'shap_results/time_per_sample_{celltype}.npy') 
-shapzero_sample_time = shapzero_sample_time * 3981312 # Number of samples needed for q-sft
+shapzero_sample_time = shapzero_sample_time * 6045696 # Number of samples needed for q-sft
 shapzero_shap_time = (np.load(f'shap_results/time_shapzero_values_{celltype}_{property}.npy') * len(df_heldout) + np.load(f'shap_results/time_shapzero_values_extra_{celltype}_{property}.npy') * len(df_extra) +  np.load(f'shap_results/time_shapzero_values_extra_{celltype}_{property}_x2.npy') * len(df_extra_2)) / (len(df_heldout) + len(df_extra) + len(df_extra_2))
 overall_shapzero_time = [shapzero_sample_time + shapzero_shap_time * i for i in num_samples]
 

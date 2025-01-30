@@ -1,7 +1,11 @@
 
-# SHAP zero Explains Black-box Models in Genomics with Near-zero Query Cost
+# SHAP zero Explains Genomic Models with Near-zero Marginal Cost for Future Queried Sequences
 
-SHAP zero is an amortized inference method for approximating SHAP values and Shapley interactions. This repository contains code from the article "SHAP zero Explains All-order Feature Interactions in Black-box Genomic Models with Near-zero Query Cost" by Darin Tsui, Aryan Musharaf, and Amirali Aghazadeh. 
+<p align="center">
+<img src="gen/SHAPzero_logo.png" alt="SHAP zero" width="400">
+</p>
+
+SHAP zero is an amortized inference method for approximating SHAP values and Shapley interactions. This repository contains code from the article "SHAP zero Explains Genomic Models with Near-zero Marginal Cost for Future Queried Sequences" by Darin Tsui, Aryan Musharaf, Yigit Efe Erginbas, Justin Singh Kang, and Amirali Aghazadeh. 
 
 ## Quick start
 
