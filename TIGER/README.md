@@ -15,7 +15,7 @@ conda activate shapzero_expts
 ## Step 1: Recover the Fourier coefficients from the model
 
 Frequent error with *q*-SFT: if you get the following message
-> ImportError: cannot import name 'decode_jit' from 'galois._codes._reed_solomon' (/usr/scratch/dtsui/.conda/pkgs/tiger/lib/python3.10/site-packages/galois/_codes/_reed_solomon.py)
+> ImportError: cannot import name 'decode_jit' from 'galois._codes._reed_solomon' (/.conda/pkgs/tiger/lib/python3.10/site-packages/galois/_codes/_reed_solomon.py)
 
 Be sure to install this specific version of galois:
 ```console
@@ -62,6 +62,7 @@ Now that we have `qsft_transform_{param}.pickle`, we can use it to compute SHAP 
 - **correlation_results/:** folder containing all information about experimentally correlating with real-life sequences.
 - **data/:** folder containing all experimental data.
 - **shap_results/:** folder containing all information about SHAP values and Shapley interactions (our results will be located here!).
+- **samples_search/:** folder containing all results for the Shapley convergence plots.
 
 As with Step 1, we will walk through all the Python scripts in numerical order.
 
@@ -71,6 +72,7 @@ As with Step 1, we will walk through all the Python scripts in numerical order.
 4. **2_shapzero.py:** This script will run SHAP zero by calling the `shapzero.py` file in `gen`. All results are deposited into the `shap_results/` folder.
 5. **3_maintext_figure.py:** This script will reproduce the main text figure from the paper by combining all plots/data into a PDF. We'll get both time complexity and SHAP values/interactions plots in this script. We'll also get our supplementary tables signifiying the top interactions and top SHAP values in the `shap_results/` folder. For SHAP zero, this will be under `shapzero_results/{param}_shapzero_values.csv` for SHAP values and `shapzero_results/{param}_shapzero_fsi.csv` for Shapley interactions.
 6. **4_supp_figures.py:** This script will reproduce the supplementary figures from the paper, which includes DeepSHAP and FastSHAP.
+7. **4_shap_convergence.py:** This script will reproduce the Shapley convergence experiments from the paper.
 
 
 ## Description of folders
