@@ -231,7 +231,6 @@ class shapzero:
             if mobius_nonzeros.size: # Check that the key is not all zeros
                 k = mobius_nonzeros.size
                 interaction_permutations = self.get_permutations(mobius_nonzeros) # get all permutations of mobius interactions
-
                 for interaction in interaction_permutations:
                     interaction_order = len(interaction)
                     interactions[tuple(interaction)] = interactions.get(tuple(interaction), 0) + ((-1) ** interaction_order) * (1/ ( self.q**k) ) * np.real(value)
@@ -751,7 +750,7 @@ def _save_all_interactions(sequences, shap_interactions, filename, chunk_size=50
         else:
             columns.append(f'Order {order}')
 
-    pd.DataFrame(data, columns=columns).to_csv(filename, index=False)
+    pd.DataFrame(data, columns=columns).to_csv(f'{filename}.csv', index=False)
 
 
 def group_by_position(data, seq_length, nucleotides):
@@ -771,11 +770,10 @@ def correlation_shap_values(shapzero, shap):
     print(f'SHAP pearson correlation: {pearson_corr:.2f}')
 
 
-def correlation_interactions(shapzero, shapzero_sequences, interactions, interactions_sequences):
+def correlation_interactions(shapzero, shapzero_sequences, interactions, interactions_sequences, encoding={0:'A', 1:'C', 2:'T', 3:'G'}):
     """
     Pearson correlation of interactions
     """
-    encoding = {0:'A', 1:'C', 2:'T', 3:'G'}
     reverse_encoding = {v: k for k, v in encoding.items()}
     interactions_sequences_encoding = [[reverse_encoding[num] for num in row] for row in interactions_sequences]
     shapzero_sequences_encoding = [[reverse_encoding[num] for num in row] for row in shapzero_sequences]
@@ -809,3 +807,775 @@ def correlation_interactions(shapzero, shapzero_sequences, interactions, interac
     print(f'Interactions pearson correlation: {pearson_corr:.2f}')
     print('Fraction of interactions shared with respect to SHAP zero: ', len(shapzero) / all_shapzero_interactions)
     print('Fraction of interactions shared with respect to SHAP-IQ: ', len(shapzero) / all_interactions)
+
+
+
+def plot_shap_values_protein(
+    ax,
+    sequences,
+    shap_values,
+    aa_dict=None,
+    x_label='Position',
+    y_label='Amino Acid',
+    font_size=6,
+    color_bounds=None,
+    cmap='bwr',
+    colorbar=True,
+):
+    """
+    Plots a heatmap of average SHAP values per amino acid and sequence position on the provided axis.
+
+    Parameters:
+        ax (matplotlib.axes.Axes): The axis to plot on.
+        sequences (list of str): Amino acid sequences (list of strings, each of length = seq_length).
+        shap_values (np.ndarray): SHAP values corresponding to sequences (shape: [num_samples, seq_length]).
+        aa_dict (dict, optional): Dictionary mapping amino acid letters to integers. Default is standard 20 amino acids.
+        x_label (str, optional): Label for x-axis.
+        y_label (str, optional): Label for y-axis.
+        font_size (int, optional): Font size for labels and ticks.
+        color_bounds (tuple, optional): (vmin, vmax) bounds for color scale. If None, determined automatically.
+        cmap (str, optional): Colormap to use.
+        colorbar (bool, optional): Whether to add a colorbar.
+    """
+
+    if aa_dict is None:
+        aa_dict = {'A': 0, 'C': 1, 'D': 2, 'E': 3, 'F': 4, 'G': 5, 'H': 6, 'I': 7, 'K': 8, 'L': 9,
+                   'M': 10, 'N': 11, 'P': 12, 'Q': 13, 'R': 14, 'S': 15, 'T': 16, 'V': 17, 'W': 18, 'Y': 19}
+
+    index_to_aa = {v: k for k, v in aa_dict.items()}
+    aa_order = [aa for aa, _ in sorted(aa_dict.items(), key=lambda x: x[1])]
+
+    num_aas = len(aa_order)
+    seq_len = shap_values.shape[1]
+
+    # Build heatmap array
+    heatmap = np.full((num_aas, seq_len), np.nan)
+
+    for aa_idx in range(num_aas):
+        for pos in range(seq_len):
+            # Find sequences where the amino acid at this position matches
+            mask = np.array([seq[pos] == index_to_aa[aa_idx] for seq in sequences])
+            if np.any(mask):
+                heatmap[aa_idx, pos] = np.mean(shap_values[mask, pos])
+
+    # Determine vmin, vmax
+    if color_bounds is not None:
+        vmin, vmax = color_bounds
+    else:
+        vmin = np.nanmin(heatmap)
+        vmax = np.nanmax(heatmap)
+
+    # Plot heatmap
+    im = ax.imshow(
+        heatmap,
+        aspect='equal',  # Square cells
+        cmap=cmap,
+        interpolation='nearest',
+        vmin=vmin,
+        vmax=vmax
+    )
+
+    # Labels and ticks
+    ax.set_xlabel(x_label, fontsize=font_size)
+    ax.set_ylabel(y_label, fontsize=font_size)
+    ax.set_xticks(np.arange(seq_len))
+    ax.set_xticklabels([str(i+1) for i in range(seq_len)], fontsize=font_size)
+    ax.set_yticks(np.arange(num_aas))
+    ax.set_yticklabels(aa_order, fontsize=font_size)
+    ax.tick_params(axis='both', which='both', width=0.25)
+
+    ax.invert_yaxis()
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    # Optional colorbar
+    if colorbar:
+        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        cbar.set_label('Average SHAP value', fontsize=font_size, rotation=270, labelpad=15)
+        cbar.ax.tick_params(labelsize=font_size)
+
+    return im, (vmin, vmax)
+
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# def plot_shap_values_protein_top_mutations(
+#     ax,
+#     sequences,
+#     shap_values,
+#     aa_dict=None,
+#     x_label='Position',
+#     y_label='Amino Acid',
+#     font_size=6,
+#     percent=10,
+#     colorbar=False,
+# ):
+#     """
+#     Plots a binary heatmap showing only the top X% positive and negative SHAP values.
+#     Positive values shown in red, negative values in blue, rest in white.
+
+#     Parameters:
+#         ax (matplotlib.axes.Axes): The axis to plot on.
+#         sequences (list of str): Amino acid sequences (list of strings).
+#         shap_values (np.ndarray): SHAP values for the sequences (shape: [num_samples, seq_length]).
+#         aa_dict (dict, optional): Mapping from amino acid letters to indices. Defaults to standard.
+#         x_label (str, optional): Label for x-axis.
+#         y_label (str, optional): Label for y-axis.
+#         font_size (int, optional): Font size for axis labels and ticks.
+#         percent (float, optional): Percent of SHAP values (positive and negative) to highlight.
+#         colorbar (bool, optional): Whether to include a colorbar (not needed here usually).
+#     """
+
+#     if aa_dict is None:
+#         aa_dict = {'A': 0, 'C': 1, 'D': 2, 'E': 3, 'F': 4, 'G': 5, 'H': 6, 'I': 7, 'K': 8, 'L': 9,
+#                    'M': 10, 'N': 11, 'P': 12, 'Q': 13, 'R': 14, 'S': 15, 'T': 16, 'V': 17, 'W': 18, 'Y': 19}
+
+#     index_to_aa = {v: k for k, v in aa_dict.items()}
+#     aa_order = [aa for aa, _ in sorted(aa_dict.items(), key=lambda x: x[1])]
+
+#     num_aas = len(aa_order)
+#     seq_len = shap_values.shape[1]
+
+#     # Compute full SHAP mean heatmap
+#     heatmap = np.full((num_aas, seq_len), np.nan)
+#     for aa_idx in range(num_aas):
+#         for pos in range(seq_len):
+#             mask = np.array([seq[pos] == index_to_aa[aa_idx] for seq in sequences])
+#             if np.any(mask):
+#                 heatmap[aa_idx, pos] = np.mean(shap_values[mask, pos])
+
+#     # Flatten and get thresholds
+#     flattened = heatmap[~np.isnan(heatmap)]
+#     num_values = len(flattened)
+#     num_to_keep = max(1, int((percent / 100) * num_values))
+
+#     # Compute thresholds
+#     sorted_vals = np.sort(flattened)
+#     print(sum(sorted_vals > 0))
+#     print(sum(sorted_vals < 0))
+#     neg_thresh = sorted_vals[num_to_keep - 1]
+#     pos_thresh = sorted_vals[-num_to_keep]
+#     print(neg_thresh)
+#     print(sorted_vals)
+
+#     # Build binary mask: -1 (blue), 0 (white), +1 (red)
+#     binary_mask = np.full_like(heatmap, 0)
+#     binary_mask[heatmap <= neg_thresh] = -1
+#     binary_mask[heatmap >= pos_thresh] = 1
+#     binary_mask[np.isnan(heatmap)] = np.nan
+
+#     # Define a colormap from bwr: white (0), blue (-1), red (+1)
+#     from matplotlib.colors import ListedColormap, BoundaryNorm
+#     cmap = ListedColormap(['blue', 'white', 'red'])
+#     norm = BoundaryNorm([-1.5, -0.5, 0.5, 1.5], cmap.N)
+
+#     # Plot
+#     im = ax.imshow(
+#         binary_mask,
+#         cmap=cmap,
+#         norm=norm,
+#         aspect='equal',
+#         interpolation='nearest'
+#     )
+
+#     # Axis setup
+#     ax.set_xlabel(x_label, fontsize=font_size)
+#     ax.set_ylabel(y_label, fontsize=font_size)
+#     ax.set_xticks(np.arange(seq_len))
+#     ax.set_xticklabels([str(i + 1) for i in range(seq_len)], fontsize=font_size)
+#     ax.set_yticks(np.arange(num_aas))
+#     ax.set_yticklabels(aa_order, fontsize=font_size)
+#     ax.tick_params(axis='both', which='both', width=0.25)
+#     ax.invert_yaxis()
+#     ax.spines['top'].set_visible(False)
+#     ax.spines['right'].set_visible(False)
+
+#     # Optional colorbar (not really needed)
+#     if colorbar:
+#         cbar = plt.colorbar(im, ax=ax, ticks=[-1, 0, 1], fraction=0.046, pad=0.04)
+#         cbar.ax.set_yticklabels(['Top Neg', 'None', 'Top Pos'])
+#         cbar.set_label('Top SHAP', fontsize=font_size)
+#         cbar.ax.tick_params(labelsize=font_size)
+
+#     return im
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap, BoundaryNorm
+
+# def plot_shap_values_protein_top_mutations(
+#     ax,
+#     sequences,
+#     shap_values,
+#     aa_dict=None,
+#     x_label='Position',
+#     y_label='Amino Acid',
+#     font_size=6,
+#     percent=15,
+#     colorbar=False,
+#     min_number=10,
+# ):
+#     """
+#     Plots a binary heatmap showing only the top X% positive and top X% negative SHAP values.
+#     Positive values shown in red, negative values in blue, rest in white.
+
+#     Parameters:
+#         ax (matplotlib.axes.Axes): The axis to plot on.
+#         sequences (list of str): Amino acid sequences (list of strings).
+#         shap_values (np.ndarray): SHAP values for the sequences (shape: [num_samples, seq_length]).
+#         aa_dict (dict, optional): Mapping from amino acid letters to indices. Defaults to standard.
+#         x_label (str, optional): Label for x-axis.
+#         y_label (str, optional): Label for y-axis.
+#         font_size (int, optional): Font size for axis labels and ticks.
+#         percent (float, optional): Percent of SHAP values (positive and negative) to highlight.
+#         colorbar (bool, optional): Whether to include a colorbar (not needed here usually).
+#         min_number (int, optional): Minimum number of positive/negative SHAP values to show.
+#     """
+
+#     if aa_dict is None:
+#         aa_dict = {'A': 0, 'C': 1, 'D': 2, 'E': 3, 'F': 4, 'G': 5, 'H': 6, 'I': 7, 'K': 8, 'L': 9,
+#                    'M': 10, 'N': 11, 'P': 12, 'Q': 13, 'R': 14, 'S': 15, 'T': 16, 'V': 17, 'W': 18, 'Y': 19}
+
+#     index_to_aa = {v: k for k, v in aa_dict.items()}
+#     aa_order = [aa for aa, _ in sorted(aa_dict.items(), key=lambda x: x[1])]
+#     num_aas = len(aa_order)
+#     seq_len = shap_values.shape[1]
+
+#     # Compute SHAP mean heatmap
+#     heatmap = np.full((num_aas, seq_len), np.nan)
+#     for aa_idx in range(num_aas):
+#         for pos in range(seq_len):
+#             mask = np.array([seq[pos] == index_to_aa[aa_idx] for seq in sequences])
+#             if np.any(mask):
+#                 heatmap[aa_idx, pos] = np.mean(shap_values[mask, pos])
+
+#     # Compute thresholds separately for pos and neg
+#     flat_vals = heatmap[~np.isnan(heatmap)]
+
+#     pos_vals = flat_vals[flat_vals > 0]
+#     neg_vals = flat_vals[flat_vals < 0]
+
+#     num_pos = max(min_number, int((percent / 100) * len(pos_vals)))
+#     num_neg = max(min_number, int((percent / 100) * len(neg_vals)))
+
+#     pos_thresh = np.sort(pos_vals)[-num_pos] if len(pos_vals) > 0 else np.inf
+#     neg_thresh = np.sort(neg_vals)[:num_neg][-1] if len(neg_vals) > 0 else -np.inf
+
+#     # Binary mask: 1 = red (top pos), -1 = blue (top neg), 0 = white
+#     binary_mask = np.full_like(heatmap, 0)
+#     binary_mask[heatmap >= pos_thresh] = 1
+#     binary_mask[heatmap <= neg_thresh] = -1
+#     binary_mask[np.isnan(heatmap)] = np.nan
+
+#     # Use bwr colors: [blue, white, red]
+#     cmap = ListedColormap(['blue', 'white', 'red'])
+#     norm = BoundaryNorm([-1.5, -0.5, 0.5, 1.5], cmap.N)
+
+#     # Plot
+#     im = ax.imshow(binary_mask, cmap=cmap, norm=norm, aspect='equal', interpolation='nearest')
+
+#     ax.set_xlabel(x_label, fontsize=font_size)
+#     ax.set_ylabel(y_label, fontsize=font_size)
+#     ax.set_xticks(np.arange(seq_len))
+#     ax.set_xticklabels([str(i + 1) for i in range(seq_len)], fontsize=font_size)
+#     ax.set_yticks(np.arange(num_aas))
+#     ax.set_yticklabels(aa_order, fontsize=font_size)
+#     ax.tick_params(axis='both', which='both', width=0.25)
+#     ax.invert_yaxis()
+#     ax.spines['top'].set_visible(False)
+#     ax.spines['right'].set_visible(False)
+
+#     # Optional colorbar
+#     if colorbar:
+#         cbar = plt.colorbar(im, ax=ax, ticks=[-1, 0, 1], fraction=0.046, pad=0.04)
+#         cbar.ax.set_yticklabels(['Top Neg', 'None', 'Top Pos'])
+#         cbar.set_label('Top SHAP', fontsize=font_size)
+#         cbar.ax.tick_params(labelsize=font_size)
+
+#     return im
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
+
+def plot_shap_values_protein_top_mutations(
+    ax,
+    sequences,
+    shap_values,
+    aa_dict=None,
+    x_label='Amino Acid',
+    y_label='Position',
+    font_size=6,
+    percent=20,
+    colorbar=True,
+    colorbar_label='Average SHAP value'
+):
+    """
+    Plots a gradient heatmap showing only the top X% positive and top X% negative SHAP values.
+    Amino acids are on the x-axis, positions are on the y-axis.
+
+    Parameters:
+        ax (matplotlib.axes.Axes): The axis to plot on.
+        sequences (list of str): Amino acid sequences (list of strings).
+        shap_values (np.ndarray): SHAP values for the sequences (shape: [num_samples, seq_length]).
+        aa_dict (dict, optional): Mapping from amino acid letters to indices. Defaults to standard.
+        x_label (str, optional): Label for x-axis.
+        y_label (str, optional): Label for y-axis.
+        font_size (int, optional): Font size for axis labels and ticks.
+        percent (float, optional): Percent of SHAP values (positive and negative) to highlight.
+        colorbar (bool, optional): Whether to include a colorbar.
+    """
+
+    if aa_dict is None:
+        aa_dict = {'A': 0, 'C': 1, 'D': 2, 'E': 3, 'F': 4, 'G': 5, 'H': 6, 'I': 7, 'K': 8, 'L': 9,
+                   'M': 10, 'N': 11, 'P': 12, 'Q': 13, 'R': 14, 'S': 15, 'T': 16, 'V': 17, 'W': 18, 'Y': 19}
+
+    index_to_aa = {v: k for k, v in aa_dict.items()}
+    aa_order = [aa for aa, _ in sorted(aa_dict.items(), key=lambda x: x[1])]
+    num_aas = len(aa_order)
+    seq_len = shap_values.shape[1]
+
+    # Compute SHAP mean heatmap
+    heatmap = np.full((num_aas, seq_len), np.nan)
+    for aa_idx in range(num_aas):
+        for pos in range(seq_len):
+            mask = np.array([seq[pos] == index_to_aa[aa_idx] for seq in sequences])
+            if np.any(mask):
+                heatmap[aa_idx, pos] = np.mean(shap_values[mask, pos])
+
+    # Compute thresholds separately for pos and neg
+    flat_vals = heatmap[~np.isnan(heatmap)]
+    pos_vals = flat_vals[flat_vals > 0]
+    neg_vals = flat_vals[flat_vals < 0]
+
+    num_pos = max(10, int((percent / 100) * len(pos_vals)))
+    num_neg = max(10, int((percent / 100) * len(neg_vals)))
+
+    pos_thresh = np.sort(pos_vals)[-num_pos] if len(pos_vals) > 0 else np.inf
+    neg_thresh = np.sort(neg_vals)[:num_neg][-1] if len(neg_vals) > 0 else -np.inf
+
+    # Keep only top mutations
+    masked_heatmap = np.full_like(heatmap, np.nan)
+    keep_mask = (heatmap >= pos_thresh) | (heatmap <= neg_thresh)
+    masked_heatmap[keep_mask] = heatmap[keep_mask]
+
+    # Flip axes: transpose and adjust colormap
+    flipped_heatmap = masked_heatmap.T  # Now shape: (positions, amino acids)
+
+    # Color normalization
+    max_pos = np.nanmax(flipped_heatmap)
+    min_neg = np.nanmin(flipped_heatmap)
+    norm = Normalize(vmin=min_neg, vmax=max_pos, clip=True)
+
+    # Plot heatmap
+    im = ax.imshow(
+        flipped_heatmap,
+        cmap='bwr',
+        norm=norm,
+        aspect='equal',
+        interpolation='nearest'
+    )
+
+    # Axis formatting
+    ax.set_xlabel(x_label, fontsize=font_size)
+    ax.set_ylabel(y_label, fontsize=font_size)
+    ax.set_xticks(np.arange(num_aas))
+    ax.set_xticklabels(aa_order, fontsize=font_size - 1)
+    ax.set_yticks(np.arange(seq_len))
+    ax.set_yticklabels([str(i + 1) for i in range(seq_len)], fontsize=font_size - 1)
+    ax.tick_params(axis='both', which='both', width=0.25)
+    # ax.invert_yaxis()  # Optional: put position 1 at top
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    # Colorbar
+    if colorbar:
+        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        cbar.set_label(colorbar_label, fontsize=font_size, rotation=270, labelpad=15)
+        cbar.ax.tick_params(labelsize=font_size - 1)
+
+    return im
+
+
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from matplotlib.colors import Normalize
+# import matplotlib.patches as patches
+
+# def plot_top_shap_interactions_grid(
+#     ax,
+#     sequences,
+#     shap_interactions,
+#     top_k=10,
+#     font_size=6,
+#     cmap='bwr',
+#     colorbar=True,
+#     min_order=2
+# ):
+#     """
+#     Plots top-k SHAP interactions on a grid. Each row is one interaction. Cells show amino acids and are colored by interaction value.
+
+#     Parameters:
+#         ax (matplotlib.axes.Axes): Axis to plot on.
+#         sequences (list of str): Amino acid sequences.
+#         shap_interactions (list of dict): SHAP interaction dicts for each sample.
+#         top_k (int): Number of top interactions to show.
+#         font_size (int): Base font size; will be adjusted to fit cells.
+#         cmap (str): Colormap ('bwr' recommended).
+#         colorbar (bool): Whether to show a colorbar.
+#         min_order (int): Minimum interaction order to consider.
+#     """
+#     from collections import defaultdict
+
+#     seq_length = len(sequences[0])
+#     sequences = [list(seq) for seq in sequences]
+
+#     # Aggregate interaction values
+#     pos_interactions = defaultdict(float)
+#     neg_interactions = defaultdict(float)
+#     pos_counts = defaultdict(int)
+#     neg_counts = defaultdict(int)
+
+#     for seq, interaction_dict in zip(sequences, shap_interactions):
+#         filtered = {k: v for k, v in interaction_dict.items() if len(k) >= min_order}
+#         for positions, value in filtered.items():
+#             aas = tuple(seq[pos] for pos in positions)
+#             key = (aas, positions)
+#             if value > 0:
+#                 pos_interactions[key] += value
+#                 pos_counts[key] += 1
+#             elif value < 0:
+#                 neg_interactions[key] += value
+#                 neg_counts[key] += 1
+
+#     # Average interactions
+#     avg_pos = {k: v / pos_counts[k] for k, v in pos_interactions.items()}
+#     avg_neg = {k: v / neg_counts[k] for k, v in neg_interactions.items()}
+#     all_avg = {**avg_pos, **avg_neg}
+#     top_interactions = dict(sorted(all_avg.items(), key=lambda x: abs(x[1]), reverse=True)[:top_k])
+
+#     # Build grid
+#     grid_vals = np.full((top_k, seq_length), np.nan)
+#     grid_labels = np.full((top_k, seq_length), '', dtype=object)
+
+#     for i, ((aas, positions), value) in enumerate(top_interactions.items()):
+#         for aa, pos in zip(aas, positions):
+#             grid_vals[i, pos] = value
+#             grid_labels[i, pos] = aa
+
+#     # Color normalization
+#     max_val = np.nanmax(np.abs(grid_vals))
+#     norm = Normalize(vmin=-max_val, vmax=max_val)
+
+#     # Plot heatmap
+#     im = ax.imshow(grid_vals, cmap=cmap, norm=norm, aspect='equal', interpolation='nearest')
+
+#     # Add text, adjust font to fit
+#     cell_height = 1
+#     cell_width = 1
+#     adjusted_font_size = min(font_size, 0.4 * 72 / max(cell_height, cell_width))  # convert to pt
+
+#     for i in range(top_k):
+#         for j in range(seq_length):
+#             label = grid_labels[i, j]
+#             if label:
+#                 ax.text(j, i, label, ha='center', va='center', fontsize=adjusted_font_size, color='black')
+
+#     # Draw grid borders
+#     for i in range(top_k + 1):
+#         ax.axhline(i - 0.5, color='black', linewidth=0.5)
+#     for j in range(seq_length + 1):
+#         ax.axvline(j - 0.5, color='black', linewidth=0.5)
+
+#     # Axis formatting
+#     ax.set_xticks(np.arange(seq_length))
+#     ax.set_xticklabels([str(i + 1) for i in range(seq_length)], fontsize=font_size, rotation=90)
+#     ax.set_yticks(np.arange(top_k))
+#     ax.set_yticklabels([f"{i+1}" for i in range(top_k)], fontsize=font_size)
+#     ax.set_xlabel("Position", fontsize=font_size)
+#     ax.set_ylabel("Top Interaction", fontsize=font_size)
+#     ax.tick_params(axis='both', which='both', width=0.25, length=0)
+#     ax.spines['top'].set_visible(False)
+#     ax.spines['right'].set_visible(False)
+#     ax.spines['left'].set_visible(False)
+#     ax.spines['bottom'].set_visible(False)
+
+#     if colorbar:
+#         cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+#         cbar.set_label('SHAP Interaction Value', fontsize=font_size)
+#         cbar.ax.tick_params(labelsize=font_size)
+
+#     return im
+
+
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from matplotlib.colors import Normalize
+
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from matplotlib.colors import Normalize
+
+# def plot_pairwise_interaction_heatmap(
+#     ax,
+#     sequences,
+#     shap_interactions,
+#     font_size=6,
+#     cmap='bwr',
+#     colorbar=True
+# ):
+#     """
+#     Plots an L x L symmetric heatmap of average 2nd-order SHAP interactions.
+
+#     Parameters:
+#         ax (matplotlib.axes.Axes): Axis to draw on.
+#         sequences (list of str): List of amino acid sequences.
+#         shap_interactions (list of dict): SHAP interaction dicts per sample.
+#         font_size (int): Font size for ticks and labels.
+#         cmap (str): Colormap (e.g. 'bwr').
+#         colorbar (bool): Whether to include a colorbar.
+#     """
+#     L = len(sequences[0])
+#     interaction_matrix = np.zeros((L, L))
+#     count_matrix = np.zeros((L, L))
+
+#     for interaction_dict in shap_interactions:
+#         for positions, value in interaction_dict.items():
+#             if len(positions) == 2:
+#                 i, j = positions
+#                 if i == j:
+#                     continue  # skip diagonal (self-interaction)
+#                 interaction_matrix[i, j] += value
+#                 interaction_matrix[j, i] += value  # symmetric entry
+#                 count_matrix[i, j] += 1
+#                 count_matrix[j, i] += 1  # symmetric entry
+
+#     # Avoid division by zero
+#     with np.errstate(invalid='ignore', divide='ignore'):
+#         avg_matrix = np.where(count_matrix > 0, interaction_matrix / count_matrix, np.nan)
+
+#     # Optional: clear diagonal
+#     np.fill_diagonal(avg_matrix, np.nan)
+
+#     # Normalize colors symmetrically
+#     max_val = np.nanmax(np.abs(avg_matrix))
+#     norm = Normalize(vmin=-max_val, vmax=max_val)
+
+#     # Plot
+#     im = ax.imshow(avg_matrix, cmap=cmap, norm=norm, aspect='equal', interpolation='nearest')
+
+#     ax.set_xticks(np.arange(L))
+#     ax.set_xticklabels([str(i+1) for i in range(L)], fontsize=font_size, rotation=90)
+#     ax.set_yticks(np.arange(L))
+#     ax.set_yticklabels([str(i+1) for i in range(L)], fontsize=font_size)
+#     ax.set_xlabel("Position", fontsize=font_size)
+#     ax.set_ylabel("Position", fontsize=font_size)
+#     ax.tick_params(axis='both', which='both', width=0.25)
+#     ax.spines['top'].set_visible(False)
+#     ax.spines['right'].set_visible(False)
+
+#     if colorbar:
+#         cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+#         cbar.set_label("Avg SHAP Interaction", fontsize=font_size)
+#         cbar.ax.tick_params(labelsize=font_size)
+
+#     return im
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap, BoundaryNorm
+from matplotlib.colors import Normalize
+
+# def plot_pairwise_interaction_heatmap(
+#     ax,
+#     sequences,
+#     shap_interactions,
+#     aa_order=None,
+#     font_size=6,
+#     percent=15,
+#     colorbar=False
+# ):
+#     """
+#     Plots a 20x20 binary heatmap of average pairwise SHAP interactions between amino acids.
+
+#     Parameters:
+#         ax (matplotlib.axes.Axes): Axis to draw on.
+#         sequences (list of str): List of amino acid sequences.
+#         shap_interactions (list of dict): SHAP interaction dicts per sample.
+#         aa_order (list of str): Order of amino acids (default: alphabetical 20 standard AAs).
+#         font_size (int): Font size for labels.
+#         percent (float): Top % of positive/negative interactions to include.
+#         colorbar (bool): Whether to include a colorbar.
+#     """
+#     if aa_order is None:
+#         aa_order = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L',
+#                     'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
+#     aa_index = {aa: i for i, aa in enumerate(aa_order)}
+#     n_aa = len(aa_order)
+
+#     interaction_matrix = np.zeros((n_aa, n_aa))
+#     count_matrix = np.zeros((n_aa, n_aa))
+
+#     for seq, interaction_dict in zip(sequences, shap_interactions):
+#         for positions, value in interaction_dict.items():
+#             if len(positions) == 2:
+#                 i, j = positions
+#                 if i == j:
+#                     continue
+#                 aa1, aa2 = seq[i], seq[j]
+#                 if aa1 in aa_index and aa2 in aa_index:
+#                     idx1, idx2 = aa_index[aa1], aa_index[aa2]
+#                     # Symmetrize by contributing to both (i,j) and (j,i)
+#                     interaction_matrix[idx1, idx2] += value
+#                     interaction_matrix[idx2, idx1] += value
+#                     count_matrix[idx1, idx2] += 1
+#                     count_matrix[idx2, idx1] += 1
+
+#     with np.errstate(divide='ignore', invalid='ignore'):
+#         avg_matrix = np.where(count_matrix > 0, interaction_matrix / count_matrix, np.nan)
+
+#     np.fill_diagonal(avg_matrix, np.nan)
+
+#     # Get top X% pos and neg
+#     flat = avg_matrix[~np.isnan(avg_matrix)]
+#     pos_vals = flat[flat > 0]
+#     neg_vals = flat[flat < 0]
+
+#     num_pos = max(1, int(len(pos_vals) * percent / 100))
+#     num_neg = max(1, int(len(neg_vals) * percent / 100))
+
+#     pos_thresh = np.sort(pos_vals)[-num_pos] if len(pos_vals) else np.inf
+#     neg_thresh = np.sort(neg_vals)[:num_neg][-1] if len(neg_vals) else -np.inf
+
+#     # Build binary matrix: -1 = top neg (blue), 1 = top pos (red), 0 = everything else
+#     binary_matrix = np.full_like(avg_matrix, 0)
+#     binary_matrix[avg_matrix >= pos_thresh] = 1
+#     binary_matrix[avg_matrix <= neg_thresh] = -1
+#     binary_matrix[np.isnan(avg_matrix)] = np.nan
+
+#     # Color map
+#     cmap = ListedColormap(['blue', 'white', 'red'])
+#     norm = BoundaryNorm([-1.5, -0.5, 0.5, 1.5], ncolors=cmap.N)
+
+#     im = ax.imshow(binary_matrix, cmap=cmap, norm=norm, aspect='equal', interpolation='nearest')
+
+#     # Label axes
+#     ax.set_xticks(np.arange(n_aa))
+#     ax.set_xticklabels(aa_order, fontsize=font_size, rotation=90)
+#     ax.set_yticks(np.arange(n_aa))
+#     ax.set_yticklabels(aa_order, fontsize=font_size)
+#     ax.set_xlabel("AA at position j", fontsize=font_size)
+#     ax.set_ylabel("AA at position i", fontsize=font_size)
+#     ax.tick_params(axis='both', which='both', width=0.25)
+#     ax.spines['top'].set_visible(False)
+#     ax.spines['right'].set_visible(False)
+
+#     if colorbar:
+#         cbar = plt.colorbar(im, ax=ax, ticks=[-1, 0, 1], fraction=0.046, pad=0.04)
+#         cbar.ax.set_yticklabels(['Top Neg', 'None', 'Top Pos'])
+#         cbar.set_label("AA Interaction SHAP (top %)", fontsize=font_size)
+#         cbar.ax.tick_params(labelsize=font_size)
+
+#     return im
+
+
+
+def plot_pairwise_interaction_heatmap(
+    ax,
+    sequences,
+    shap_interactions,
+    aa_order=None,
+    font_size=6,
+    cmap='bwr',
+    colorbar=True,
+    percent=20,
+    colorbar_label='Average SHAP interaction'
+):
+    """
+    Plots a 20x20 gradient heatmap of top X% average pairwise SHAP interactions between amino acids.
+
+    Parameters:
+        ax (matplotlib.axes.Axes): Axis to draw on.
+        sequences (list of str): Amino acid sequences.
+        shap_interactions (list of dict): SHAP interaction dicts per sample.
+        aa_order (list of str): Order of amino acids (default = 20 standard AAs).
+        font_size (int): Font size for axis labels.
+        cmap (str): Colormap for SHAP values (e.g. 'bwr').
+        colorbar (bool): Whether to include a colorbar.
+        percent (float): Percent of top positive and negative values to display.
+    """
+    if aa_order is None:
+        aa_order = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L',
+                    'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
+    aa_index = {aa: i for i, aa in enumerate(aa_order)}
+    n_aa = len(aa_order)
+
+    interaction_matrix = np.zeros((n_aa, n_aa))
+    count_matrix = np.zeros((n_aa, n_aa))
+
+    for seq, interaction_dict in zip(sequences, shap_interactions):
+        for positions, value in interaction_dict.items():
+            if len(positions) == 2:
+                i, j = positions
+                if i == j:
+                    continue
+                aa1, aa2 = seq[i], seq[j]
+                if aa1 in aa_index and aa2 in aa_index:
+                    idx1, idx2 = aa_index[aa1], aa_index[aa2]
+                    interaction_matrix[idx1, idx2] += value
+                    interaction_matrix[idx2, idx1] += value
+                    count_matrix[idx1, idx2] += 1
+                    count_matrix[idx2, idx1] += 1
+
+    with np.errstate(divide='ignore', invalid='ignore'):
+        avg_matrix = np.where(count_matrix > 0, interaction_matrix / count_matrix, np.nan)
+
+    np.fill_diagonal(avg_matrix, np.nan)
+
+    # Mask everything except top X% of positive/negative values
+    flat_vals = avg_matrix[~np.isnan(avg_matrix)]
+    pos_vals = flat_vals[flat_vals > 0]
+    neg_vals = flat_vals[flat_vals < 0]
+
+    num_pos = max(1, int((percent / 100) * len(pos_vals)))
+    num_neg = max(1, int((percent / 100) * len(neg_vals)))
+
+    pos_thresh = np.sort(pos_vals)[-num_pos] if len(pos_vals) > 0 else np.inf
+    neg_thresh = np.sort(neg_vals)[:num_neg][-1] if len(neg_vals) > 0 else -np.inf
+
+    masked_matrix = np.full_like(avg_matrix, np.nan)
+    keep_mask = (avg_matrix >= pos_thresh) | (avg_matrix <= neg_thresh)
+    masked_matrix[keep_mask] = avg_matrix[keep_mask]
+
+    # Color normalization (asymmetric)
+    vmax = np.nanmax(masked_matrix)
+    vmin = np.nanmin(masked_matrix)
+    if vmax <= 0: vmax = 1e-8
+    if vmin >= 0: vmin = -1e-8
+    norm = Normalize(vmin=vmin, vmax=vmax, clip=True)
+
+    # Plot heatmap
+    im = ax.imshow(masked_matrix, cmap=cmap, norm=norm, aspect='equal', interpolation='nearest')
+
+    # Axis labels
+    ax.set_xticks(np.arange(n_aa))
+    ax.set_xticklabels(aa_order, fontsize=font_size - 1)#, rotation=90)
+    ax.set_yticks(np.arange(n_aa))
+    ax.set_yticklabels(aa_order, fontsize=font_size - 1)
+    ax.set_xlabel("Amino acid", fontsize=font_size)
+    ax.set_ylabel("Amino acid", fontsize=font_size)
+    ax.tick_params(axis='both', which='both', width=0.25)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    if colorbar:
+        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+        cbar.set_label(colorbar_label, fontsize=font_size, rotation=270, labelpad=8)
+        cbar.ax.tick_params(labelsize=font_size - 1)
+
+    return im

@@ -184,6 +184,92 @@ def run_pairwise_model(sequences_train, y_train, sequences_test, y_test):
 
     return corr, y_pred
 
+def run_linear_model_protein(sequences_train, y_train, sequences_test, y_test):
+    """
+    Runs a linear model, feeding in a list of sequences and their corresponding values
+    Returns the pearson correlation coefficient for the test set
+    """
+
+    # One-hot encoding amino acids
+    aas = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
+    one_hot_encoding = {}
+    for i, nt in enumerate(aas):
+        encoding = [0] * len(aas)
+        encoding[i] = 1
+        one_hot_encoding[nt] = encoding
+
+    # One-hot encode the training sequences
+    one_hot_encoded_sequences_train = []
+    for sequence in sequences_train:
+        sequence = list(sequence)
+        one_hot_encoded_sequence = []
+        for nt in sequence:
+            one_hot_encoded_sequence.extend(one_hot_encoding[nt])
+        one_hot_encoded_sequences_train.append(one_hot_encoded_sequence)
+    one_hot_encoded_sequences_train = np.array(one_hot_encoded_sequences_train)
+
+    # One-hot encode the test sequences
+    one_hot_encoded_sequences_test = []
+    for sequence in sequences_test:
+        sequence = list(sequence)
+        one_hot_encoded_sequence = []
+        for nt in sequence:
+            one_hot_encoded_sequence.extend(one_hot_encoding[nt])
+        one_hot_encoded_sequences_test.append(one_hot_encoded_sequence)
+    one_hot_encoded_sequences_test = np.array(one_hot_encoded_sequences_test)
+
+    # Run the model
+    model = Ridge(alpha=0.5)
+    model.fit(one_hot_encoded_sequences_train, y_train)
+    y_pred = model.predict(one_hot_encoded_sequences_test)
+    corr = pearsonr(y_test, y_pred)[0]
+
+    return corr, y_pred
+
+def run_pairwise_model_protein(sequences_train, y_train, sequences_test, y_test):
+    """
+    Runs a pairwise model, feeding in a list of sequences and their corresponding values
+    Returns the pearson correlation coefficient for the test set
+    """
+
+    # One-hot encoding amino acids
+    aas = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
+    one_hot_encoding = {}
+    for i, nt in enumerate(aas):
+        encoding = [0] * len(aas)
+        encoding[i] = 1
+        one_hot_encoding[nt] = encoding
+
+    # One-hot encode the training sequences
+    one_hot_encoded_sequences_train = []
+    for sequence in sequences_train:
+        sequence = list(sequence)
+        one_hot_encoded_sequence = []
+        for nt in sequence:
+            one_hot_encoded_sequence.extend(one_hot_encoding[nt])
+        one_hot_encoded_sequences_train.append(one_hot_encoded_sequence)
+    one_hot_encoded_sequences_train = np.array(one_hot_encoded_sequences_train)
+
+    # One-hot encode the test sequences
+    one_hot_encoded_sequences_test = []
+    for sequence in sequences_test:
+        sequence = list(sequence)
+        one_hot_encoded_sequence = []
+        for nt in sequence:
+            one_hot_encoded_sequence.extend(one_hot_encoding[nt])
+        one_hot_encoded_sequences_test.append(one_hot_encoded_sequence)
+    one_hot_encoded_sequences_test = np.array(one_hot_encoded_sequences_test)
+
+    # Run the model
+    model = Pipeline([
+        ('poly_features', PolynomialFeatures(degree=degree, interaction_only=True)),  
+        ('linear_regression', Ridge(alpha=0.5)) 
+    ])
+    model.fit(one_hot_encoded_sequences_train, y_train)
+    y_pred = model.predict(one_hot_encoded_sequences_test)
+    corr = pearsonr(y_test, y_pred)[0]
+
+    return corr, y_pred
 
 def plot_scatter_with_best_fit(ax, y, y_hat_model, pearson_corr, x_label='Ground-truth score', y_label='Predicted score', linewidth=0.25, font_size = 5, x_limits=None, y_limits=None, color='#00a087', marker='o', markersize=0.25, legend_marker_size=3):
     """
@@ -225,7 +311,7 @@ def summary_stats(y, y_hat):
     }, index=[0])
 
 
-def plot_time_complexity(ax, overall_shap_time, overall_mobius_time, font_size=6, x_label='Number of samples', y_label='Total runtime (seconds)', first_shap_method='KernelSHAP', first_shap_color='#00a087', second_shap_method='SHAP zero', second_shap_color='#3c5488', y_limits=None, legend=True, linewidth=0.2, tot_samples=None, markersize=0.25, legend_loc='upper left', offset_intersection_text=100):
+def plot_time_complexity(ax, overall_shap_time, overall_mobius_time, font_size=6, x_label='Number of samples', y_label='Total runtime (seconds)', first_shap_method='KernelSHAP', first_shap_color='#AF588A', second_shap_method='SHAP zero', second_shap_color='#226e9c', y_limits=None, legend=True, linewidth=0.2, tot_samples=None, markersize=0.25, legend_loc='upper left', offset_intersection_text=100, annotate=True):
     """
     Plot SHAP compute time per sample
     Parameters:
@@ -248,50 +334,51 @@ def plot_time_complexity(ax, overall_shap_time, overall_mobius_time, font_size=6
         offset_intersection_text (int, optional): Offset for intersection annotation. Defaults to 100.
     """
     num_samples = range(1, len(overall_mobius_time) + 1)
-    # Find where shap methods intersect
-    intersection = np.where(np.array(overall_shap_time) > np.array(overall_mobius_time))[0]
-    if len(intersection) > 0:
-        intersection = intersection[0]
-        if intersection + offset_intersection_text < num_samples[-1]:
-            intersection_text_loc = intersection + offset_intersection_text
-        else:
-            intersection_text_loc = intersection - offset_intersection_text
-        if intersection == 1:
-            ax.annotate(f'{intersection} explanation',  
-                xy=(intersection, overall_shap_time[intersection]), 
-                xytext=(intersection_text_loc, overall_shap_time[intersection] * 1.5),
-                arrowprops=dict(facecolor='black', arrowstyle='-|>', lw=linewidth),
-                bbox=dict(pad=0, facecolor="none", edgecolor="none"),
-                fontsize=font_size, color='black', zorder=10)
-        else:
-            ax.annotate(f'{intersection} explanations',  
-                xy=(intersection, overall_shap_time[intersection]), 
-                xytext=(intersection_text_loc, overall_shap_time[intersection] * 1.5),
-                arrowprops=dict(facecolor='black', arrowstyle='-|>', lw=linewidth),
-                bbox=dict(pad=0, facecolor="none", edgecolor="none"),
-                fontsize=font_size, color='black', zorder=10)
-        ax.axvline(x=intersection, color='black', linestyle='--', linewidth=linewidth)
+    if annotate:
+        # Find where shap methods intersect
+        intersection = np.where(np.array(overall_shap_time) > np.array(overall_mobius_time))[0]
+        if len(intersection) > 0:
+            intersection = intersection[0]
+            if intersection + offset_intersection_text < num_samples[-1]:
+                intersection_text_loc = intersection + offset_intersection_text
+            else:
+                intersection_text_loc = intersection - offset_intersection_text
+            if intersection == 1:
+                ax.annotate(f'{intersection} explanation',  
+                    xy=(intersection, overall_shap_time[intersection]), 
+                    xytext=(intersection_text_loc, overall_shap_time[intersection] * 1.5),
+                    arrowprops=dict(facecolor='black', arrowstyle='-|>', lw=linewidth),
+                    bbox=dict(pad=0, facecolor="none", edgecolor="none"),
+                    fontsize=font_size, color='black', zorder=10)
+            else:
+                ax.annotate(f'{intersection} explanations',  
+                    xy=(intersection, overall_shap_time[intersection]), 
+                    xytext=(intersection_text_loc, overall_shap_time[intersection] * 1.5),
+                    arrowprops=dict(facecolor='black', arrowstyle='-|>', lw=linewidth),
+                    bbox=dict(pad=0, facecolor="none", edgecolor="none"),
+                    fontsize=font_size, color='black', zorder=10)
+            ax.scatter(intersection, overall_shap_time[intersection], color='black', marker='.', s=markersize, zorder=10)
+            # ax.axvline(x=intersection, color='black', linestyle='--', linewidth=linewidth)
 
-    ax.plot(num_samples, overall_mobius_time, '-', color=second_shap_color, label=second_shap_method, linewidth=linewidth)
-    ax.plot(num_samples, overall_shap_time, '-', color=first_shap_color, label=first_shap_method, linewidth=linewidth, dashes=(10, 5))
+    ax.plot(num_samples, overall_mobius_time, '-', color=second_shap_color, label=second_shap_method, linewidth=linewidth+0.5)
+    ax.plot(num_samples, overall_shap_time, '-', color=first_shap_color, label=first_shap_method, linewidth=linewidth+0.5)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.set_yscale('log')
     ax.tick_params(axis='both', labelsize=font_size, width=linewidth)
     ax.set_xlabel(x_label, fontsize=font_size)
     ax.set_ylabel(y_label, fontsize=font_size)
-    ax.legend(loc='upper right').get_frame().set_linewidth(linewidth)
 
     if y_limits is not None:
         ax.set_ylim(y_limits)
     if legend:
         legend = ax.legend(loc=legend_loc, fontsize=font_size)
         legend.get_frame().set_linewidth(0.5)
-    if tot_samples is not None:
+    if tot_samples is not None and annotate:
         ax.plot(tot_samples, overall_shap_time[tot_samples], marker='x', color='black', markersize=markersize, zorder=10)
 
 
-def plot_multiple_time_complexity(ax, overall_shap_time, overall_mobius_time, overall_third_shap_time, font_size=6, x_label='Number of samples', y_label='Total runtime (seconds)', first_shap_method='FastSHAP', first_shap_color='#00a087', second_shap_method='SHAP zero', second_shap_color='#3c5488', third_shap_method='DeepSHAP', third_shap_color='#f39b7f', y_limits=None, legend=True, linewidth=0.2, tot_samples=None, markersize=0.25, legend_loc='lower right', offset_intersection_text=100):
+def plot_multiple_time_complexity(ax, overall_shap_time, overall_mobius_time, overall_third_shap_time, font_size=6, x_label='Number of samples', y_label='Total runtime (seconds)', first_shap_method='FastSHAP', first_shap_color='#AF588A', second_shap_method='SHAP zero', second_shap_color='#226e9c', third_shap_method='DeepSHAP', third_shap_color='#F6921E', y_limits=None, legend=True, linewidth=0.2, tot_samples=None, markersize=0.25, legend_loc='lower right', offset_intersection_text=100):
     """
     Plot SHAP compute time per sample
     """
@@ -321,9 +408,9 @@ def plot_multiple_time_complexity(ax, overall_shap_time, overall_mobius_time, ov
                     fontsize=font_size, color='black', zorder=10)
             ax.axvline(x=intersection, color='black', linestyle='--', linewidth=linewidth)
 
-    ax.plot(num_samples, overall_mobius_time, '-', color=second_shap_color, label=second_shap_method, linewidth=linewidth)
-    ax.plot(num_samples, overall_shap_time, '-', color=first_shap_color, label=first_shap_method, linewidth=linewidth, dashes=(10, 5))
-    ax.plot(num_samples, overall_third_shap_time, '-', color=third_shap_color, label=third_shap_method, linewidth=linewidth, dashes=(10, 5))
+    ax.plot(num_samples, overall_mobius_time, '-', color=second_shap_color, label=second_shap_method, linewidth=linewidth+0.5)
+    ax.plot(num_samples, overall_shap_time, '-', color=first_shap_color, label=first_shap_method, linewidth=linewidth+0.5)
+    ax.plot(num_samples, overall_third_shap_time, '-', color=third_shap_color, label=third_shap_method, linewidth=linewidth+0.5)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.set_yscale('log')
